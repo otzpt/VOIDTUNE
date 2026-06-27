@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VOIDTUNE Performance Suite - MSI installer authoring (WiX v3)
+  Build with build.ps1 (harvests payload via heat, then candle + light).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <Product Id="*"
+           Name="VOIDTUNE Performance Suite"
+           Language="1033"
+           Version="0.8.0.0"
+           Manufacturer="@OTZPT"
+           UpgradeCode="35F9C58F-A8C7-4333-8EE3-A750DE8107E4">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="VOIDTUNE Windows Performance Optimizer"
+             Comments="VOIDTUNE Performance Suite v0.8 - (C) 2026 @OTZPT, GPL v3"
+             Manufacturer="@OTZPT" />
+
+    <!-- Clean major-upgrade behaviour: removes old version before laying down the new one -->
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of VOIDTUNE is already installed. Please uninstall it first." />
+
+    <!-- Single embedded CAB inside the MSI -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Add/Remove Programs presentation -->
+    <Icon Id="VoidtuneIcon" SourceFile="$(var.StageDir)\VOIDTUNE.exe" />
+    <Property Id="ARPPRODUCTICON" Value="VoidtuneIcon" />
+    <Property Id="ARPCOMMENTS"    Value="Windows performance optimization suite" />
+    <Property Id="ARPCONTACT"     Value="@OTZPT" />
+    <Property Id="ARPNOREPAIR"    Value="0" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <!-- Recover the install path on uninstall so RemoveFolderEx can wipe the tree -->
+    <Property Id="VT_INSTALLFOLDER" Secure="yes">
+      <RegistrySearch Id="VtInstallFolderSearch"
+                      Root="HKLM"
+                      Key="Software\OTZPT\VOIDTUNE"
+                      Name="InstallPath"
+                      Type="raw" />
+    </Property>
+
+    <!-- Require Windows 7+ / Installer 5.0 -->
+    <Condition Message="VOIDTUNE requires Windows 7 or later.">
+      <![CDATA[Installed OR (VersionNT >= 601)]]>
+    </Condition>
+
+    <!-- Directory layout -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="VOIDTUNE" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder" />
+      <Directory Id="DesktopFolder" />
+    </Directory>
+
+    <!-- Start Menu + Desktop shortcuts (own component, HKCU keypath) -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="AppShortcuts" Guid="DCA55B2B-3E55-4372-BCF3-B07CEEC5F8DA">
+        <Shortcut Id="StartMenuShortcut"
+                  Directory="ProgramMenuFolder"
+                  Name="VOIDTUNE"
+                  Description="VOIDTUNE Performance Suite"
+                  Target="[INSTALLFOLDER]VOIDTUNE.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="VoidtuneIcon" />
+        <Shortcut Id="DesktopShortcut"
+                  Directory="DesktopFolder"
+                  Name="VOIDTUNE"
+                  Description="VOIDTUNE Performance Suite"
+                  Target="[INSTALLFOLDER]VOIDTUNE.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="VoidtuneIcon" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\OTZPT\VOIDTUNE"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+
+      <!-- Records the install path, and on uninstall recursively deletes the whole
+           install folder INCLUDING runtime-generated logs\ and backups\ -->
+      <Component Id="CleanupComponent" Guid="750FD41D-CB9B-40B8-8EF6-6A0729402273">
+        <RegistryValue Root="HKLM"
+                       Key="Software\OTZPT\VOIDTUNE"
+                       Name="InstallPath"
+                       Type="string"
+                       Value="[INSTALLFOLDER]"
+                       KeyPath="yes" />
+        <util:RemoveFolderEx On="uninstall" Property="VT_INSTALLFOLDER" />
+        <RemoveFolder Id="CleanupInstallFolder" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Feature: harvested payload (VtFiles, from Files.wxs) + shortcuts -->
+    <Feature Id="MainFeature" Title="VOIDTUNE Performance Suite" Level="1"
+             Description="Core application files and shortcuts.">
+      <ComponentGroupRef Id="VtFiles" />
+      <ComponentRef Id="AppShortcuts" />
+      <ComponentRef Id="CleanupComponent" />
+    </Feature>
+
+    <!-- Wizard UI: welcome, license, choose folder, progress -->
+    <UIRef Id="WixUI_InstallDir" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.ProjDir)\License.rtf" />
+
+  </Product>
+</Wix>

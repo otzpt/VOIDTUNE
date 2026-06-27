@@ -2,6 +2,7 @@
 
 # Runtime generated files - do not commit
 voidtune_state.txt
+voidtune_crash.log
 logs/
 backups/
 
@@ -10,8 +11,15 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-# Compiled output
+# Compiled / packaged output (shipped via Releases, not the repo)
 *.exe
+*.msi
+*.zip
+
+# Installer build artefacts
+installer/.wix/
+installer/.build/
+installer/*.wixpdb
 
 # Temp
 *.tmp
