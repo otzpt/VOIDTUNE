@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8] - 2026-06-27
+
+### Added
+- **One-click tiered apply** — `SAFE` / `EXTREME` / `NUCLEAR` / `REVERT ALL` buttons in the topbar. Each tier applies everything up to its level; REVERT ALL rolls every applied tweak back to Windows defaults
+- **NUCLEAR tab** — a new tier of security-disabling tweaks (Defender real-time, SmartScreen, UAC, Core Isolation/HVCI, Firewall). All revertible, gated behind a severe confirmation dialog
+- **Process grouping** — the Processes page now groups by category (SYSTEM / BROWSER / GAMING / MEDIA / COMM / SECURITY / BLOAT / USER) with per-group headers and counts
+- **Optimal Page File tweak** — auto-sizes the pagefile to 1.5x RAM initial / 3x RAM max from your installed memory
+- **Smart SELECT ALL** — selects all tweaks + privacy tweaks (skips the Restore tab) and applies the gaming services profile in one click
+- **MSI installer** — proper Windows Installer (`VOIDTUNE-0.8-Setup.msi`): per-machine install, Start Menu + Desktop shortcuts, Add/Remove Programs entry, wizard UI, clean upgrades and a fully clean uninstall (removes runtime logs/backups too)
+
+### Fixed
+- **XAML failed to load** — added the missing `xmlns:sys` namespace used by the font-size constants
+- **App would not start** — `.ps1` files are now saved UTF-8 **with BOM** so the runtime decodes the special characters correctly instead of as ANSI (which broke the parser mid-file)
+- **Splash screen crash** — the splash no longer runs on a separate `Dispatcher.Run()` STA thread, which silently tore the process down under the `-noConsole` compiled build. It now renders inline on the main thread
+- **Compiled `.exe` path resolution** — robust 5-stage fallback so `ROOT` is never null inside the ps2exe build (fixes "cannot bind argument to parameter 'Path'")
+
 ## [0.7] - 2026-03-28
 
 ### Added

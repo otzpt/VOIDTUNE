@@ -1,4 +1,3 @@
-markdown
 # VOIDTUNE v0.8
 
 **Windows optimization suite for gamers and power users.**
@@ -7,52 +6,31 @@ markdown
 |---------|---------|----------|-----------|
 | 0.8 | GPL v3 | Windows 10/11 | PowerShell + WPF/XAML |
 
-🌐 **Website** • 📦 **Releases** • 🐛 **Issues**
+🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
 ---
 
 ## 🎨 What's New in v0.8
 
-### Professional UI Overhaul
-- Completely redesigned interface with modern dark theme (#0E0E12)
-- CSS-like color system for consistent theming
-- Professional typography using Segoe UI font family
-- Borderless window with transparency support
-- Responsive layout that adapts to screen sizes
-- Modern button styles with smooth hover/press effects
+### One-click tiered apply
+- **SAFE / EXTREME / NUCLEAR / REVERT ALL** buttons in the topbar — apply everything up to a tier in one click, or roll every applied tweak back to Windows defaults
+- **NUCLEAR tab** — a new tier of security-disabling tweaks (Defender real-time, SmartScreen, UAC, Core Isolation/HVCI, Firewall). All revertible, gated behind a severe confirmation
 
-### Performance Optimizations
-- New optimization functions for system tuning
-- Memory management improvements (DisablePagingExecutive, LargeSystemCache)
-- Disk performance enhancements (NtfsDisableLastAccessUpdate)
-- Network optimizations (TCP parameter tuning)
-- CPU performance tuning (Win32PrioritySeparation)
+### Quality-of-life
+- **Process grouping** — the Processes page groups by category (SYSTEM / BROWSER / GAMING / MEDIA / COMM / SECURITY / BLOAT / USER) with per-group headers and counts
+- **Optimal Page File tweak** — auto-sizes the pagefile to 1.5× RAM initial / 3× RAM max from your installed memory
+- **Smart SELECT ALL** — selects all tweaks + privacy tweaks (skips the Restore tab) and applies the gaming services profile in one click
 
-### System Cleanup
-- Enhanced cleanup functions for temporary files
-- System log clearing functionality
-- Disk cleanup integration
-- Startup optimization with delay reduction
+### MSI installer
+- Proper Windows Installer (`VOIDTUNE-0.8-Setup.msi`): per-machine install, Start Menu + Desktop shortcuts, Add/Remove Programs entry, wizard UI, clean upgrades and a fully clean uninstall
 
-### Code Quality Improvements
-- Professional file organization with clear directory structure
-- Enhanced error handling throughout all modules
-- Version consistency across all files (v0.8)
-- Backup system for user safety
-- Modular architecture for easy maintenance
+### Stability fixes
+- Fixed XAML failing to load (missing `xmlns:sys` namespace)
+- Fixed the app not starting — source files are now UTF-8 **with BOM** so the runtime decodes correctly
+- Fixed the splash screen tearing the process down under the compiled `-noConsole` build
+- Robust executable path resolution inside the ps2exe build
 
-### New Features
-- One-click optimization button in Quick Actions
-- Visual feedback for all operations
-- Improved logging with color coding
-- Enhanced hardware detection with better error handling
-- Modern progress bars and status indicators
-
-### Bug Fixes
-- Fixed XAML parsing errors (removed unsupported CornerRadius on ProgressBar)
-- Fixed version inconsistencies (all files now show v0.8)
-- Improved error recovery in hardware detection
-- Better exception handling in optimization functions
+> Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -64,6 +42,46 @@ VOIDTUNE is a free, open-source Windows optimizer and debloater built with Power
 
 ---
 
+## Installation
+
+### Option A — MSI installer (recommended)
+
+1. Download **`VOIDTUNE-0.8-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
+2. Run it and follow the wizard.
+
+Installs to `Program Files`, adds Start Menu + Desktop shortcuts, and registers in Add/Remove Programs for a clean uninstall.
+
+### Option B — Portable ZIP
+
+1. Download **`VOIDTUNE_0.8V.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
+2. Extract it — **keep all files and folders together**.
+3. Right-click `LAUNCH_VOIDTUNE.bat` → **Run as Administrator** (or run `VOIDTUNE.exe`).
+
+> All files (`core\`, `modules\`, `ui\`, `*.xaml`) must stay in the same folder. Do not move files around.
+
+### Building the EXE
+
+Requires [ps2exe](https://github.com/MScholtes/PS2EXE):
+
+```powershell
+Install-Module ps2exe -Scope CurrentUser
+Invoke-PS2EXE .\VOIDTUNE.ps1 .\VOIDTUNE.exe -noConsole -requireAdmin -title "VOIDTUNE" -version "0.8.0.0"
+```
+
+> Source files must be saved **UTF-8 with BOM** so PowerShell decodes them correctly when run from the compiled exe.
+
+### Building the MSI
+
+The `installer\` folder contains the WiX authoring and a self-contained build script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\build.ps1
+```
+
+It downloads WiX v3 on first run, harvests the payload and produces `VOIDTUNE-0.8-Setup.msi`.
+
+---
+
 ## Features
 
 ### Tweaks
@@ -71,12 +89,13 @@ Apply and revert registry tweaks, power plan changes, and system settings across
 
 - **CPU** — High performance plan, Win32 priority, timer resolution, core parking, boost modes
 - **GPU** — Hardware GPU scheduling, TDR delay, Direct Flip, MPO disable, GPU priority
-- **RAM** — Disable paging executive, large system cache, memory compression
+- **RAM** — Disable paging executive, large system cache, memory compression, optimal pagefile
 - **Network** — TCP no delay, Fast Open, RSS, DNS flush, QoS throttle removal
 - **Debloat** — Telemetry, Cortana, Game Bar, animations, mouse acceleration, Superfetch
 - **Power** — Balanced, High Performance, Ultimate Performance (hidden plan)
 - **Latency** — App kill timeout, NTFS optimization, IRQ priority, HPET disable
 - **Game** — Game Mode, MMCSS scheduling, fullscreen optimizations, DWM flush rate
+- **NUCLEAR** — Security-disabling tweaks (Defender, SmartScreen, UAC, Core Isolation, Firewall) — all revertible
 - **Restore** — One-click revert to Windows defaults
 - **Architecture tweaks** — Intel/AMD CPU and NVIDIA/AMD GPU specific tweaks unlocked at runtime based on detected hardware
 
@@ -92,7 +111,7 @@ Install common apps via winget (Chocolatey fallback) — browsers, dev tools, ga
 Toggle, stop, start and profile Windows services. Includes Gaming and Normal presets, dependency warnings, and a disable-all option.
 
 ### Process Monitor
-View top processes by RAM usage, tag known bloat automatically, kill individual processes or sweep all bloat in one click.
+View top processes grouped by category and RAM usage, tag known bloat automatically, kill individual processes or sweep all bloat in one click.
 
 ### Hardware Diagnostics
 Full hardware info cards: CPU, GPU, RAM, Disk, OS, Motherboard, Uptime. Driver version and build info included.
@@ -135,126 +154,31 @@ Run CMD or PowerShell commands directly with full admin rights from inside VOIDT
 
 ---
 
-## Installation
+## Contributing
 
-VOIDTUNE does not require installation. Just download and run.
-
-### Option A — Run from source
-
-```bash
-git clone https://github.com/otzpt_dev/voidtune.git
-Right-click LAUNCH_VOIDTUNE.bat → Run as Administrator
-
-Option B — Download zip
-Go to Releases
-
-Download the latest zip and extract it — keep all files and folders together
-
-Right-click LAUNCH_VOIDTUNE.bat → Run as Administrator
-
-Note: All files (core\, modules\, ui\, *.xaml) must stay in the same folder. Do not move files around.
-
-Building the EXE
-Requires ps2exe:
-
-powershell
-Install-Module ps2exe -Scope CurrentUser
-Invoke-PS2EXE .\VOIDTUNE.ps1 .\VOIDTUNE.exe -noConsole -requireAdmin -title "VOIDTUNE" -version "0.8.0.0"
-Changelog
-[v0.8] - 2026-05-15
-🎨 Professional UI Overhaul
-Completely redesigned interface with modern dark theme (#0E0E12)
-
-CSS-like color system for consistent theming
-
-Professional typography using Segoe UI font family
-
-Borderless window with transparency support
-
-Responsive layout that adapts to screen sizes
-
-Modern button styles with smooth hover/press effects
-
-🚀 Performance Optimizations
-New optimization functions for system tuning
-
-Memory management improvements (DisablePagingExecutive, LargeSystemCache)
-
-Disk performance enhancements (NtfsDisableLastAccessUpdate)
-
-Network optimizations (TCP parameter tuning)
-
-CPU performance tuning (Win32PrioritySeparation)
-
-🧹 System Cleanup
-Enhanced cleanup functions for temporary files
-
-System log clearing functionality
-
-Disk cleanup integration
-
-Startup optimization with delay reduction
-
-🔧 Code Quality Improvements
-Professional file organization with clear directory structure
-
-Enhanced error handling throughout all modules
-
-Version consistency across all files (v0.8)
-
-Backup system for user safety
-
-Modular architecture for easy maintenance
-
-✨ New Features
-One-click optimization button in Quick Actions
-
-Visual feedback for all operations
-
-Improved logging with color coding
-
-Enhanced hardware detection with better error handling
-
-Modern progress bars and status indicators
-
-🐛 Bug Fixes
-Fixed XAML parsing errors (removed unsupported CornerRadius on ProgressBar)
-
-Fixed version inconsistencies (all files now show v0.8)
-
-Improved error recovery in hardware detection
-
-Better exception handling in optimization functions
-
-Contributing
 Contributions are welcome. If you want to add tweaks, fix bugs, or improve the UI:
 
-Fork the repository
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m "add: your feature"`
+4. Push and open a Pull Request
 
-Create a branch: git checkout -b feature/your-feature
+For new tweaks, add them to `modules/data.ps1` following the existing `[TI]` model. Include a `RevertCmd` wherever possible.
 
-Commit your changes: git commit -m "add: your feature"
+For bug reports, open an issue with your Windows build, hardware info, and the relevant lines from `logs/voidtune_*.log`.
 
-Push and open a Pull Request
+---
 
-For new tweaks, add them to modules/data.ps1 following the existing [TI] model. Include a RevertCmd wherever possible.
+## Disclaimer
 
-For bug reports, open an issue with your Windows build, hardware info, and the relevant lines from logs/voidtune_*.log.
+VOIDTUNE modifies Windows registry entries, services, and system settings. **Use at your own risk.** Always create a backup or restore point before applying tweaks. The author accepts no responsibility for data loss, system instability, or any other issues arising from use of this software.
 
-Disclaimer
-VOIDTUNE modifies Windows registry entries, services, and system settings. Use at your own risk. Always create a backup or restore point before applying tweaks. The author accepts no responsibility for data loss, system instability, or any other issues arising from use of this software.
+---
 
-License
-VOIDTUNE is licensed under the GNU General Public License v3.0.
+## License
+
+VOIDTUNE is licensed under the **GNU General Public License v3.0**.
 
 You are free to use, modify, and distribute this software under the terms of the GPL v3. Any derivative work must also be distributed under the same license.
 
-Copyright (C) 2026 @otzpt_dev • voidtune-optimizer.netlify.app
-
-text
-
-The key changes I made:
-- Updated version from 0.7.0.0 → **0.8.0.0**
-- Added your **complete v0.8 changelog** as a new section at the top and in the Changelog section
-- Changed the build command version to `0.8.0.0`
-- Updated the header to show v0.8
+Copyright (C) 2026 @otzpt • [voidtune-optimizer.netlify.app](https://voidtune-optimizer.netlify.app)
