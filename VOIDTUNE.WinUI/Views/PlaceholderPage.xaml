@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="VOIDTUNE.WinUI.Views.PlaceholderPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="32">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420">
+            <FontIcon Glyph="&#xE9F5;" FontSize="44" Foreground="{StaticResource BrandVioletSoft}" />
+            <TextBlock x:Name="TitleText" Text="Coming soon" FontSize="24" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="This module is being ported from the PowerShell edition into the WinUI 3 app."
+                       TextAlignment="Center" Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</Page>

@@ -1,0 +1,188 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using VOIDTUNE.WinUI.Models;
+using VOIDTUNE.WinUI.Services;
+
+namespace VOIDTUNE.WinUI.Views;
+
+public sealed partial class TweaksPage : Page
+{
+    private readonly TweakEngine _engine = TweakEngine.Instance;
+    private readonly ObservableCollection<Tweak> _filtered = new();
+    private const string AllCategories = "All categories";
+
+    public TweaksPage()
+    {
+        this.InitializeComponent();
+        TweakList.ItemsSource = _filtered;
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        if (CategoryBox.Items.Count == 0)
+        {
+            CategoryBox.Items.Add(AllCategories);
+            foreach (var c in _engine.Categories) CategoryBox.Items.Add(c);
+            CategoryBox.SelectedIndex = 0;
+            TierBox.SelectedIndex = 0;
+        }
+        else
+        {
+            ApplyFilter();
+        }
+    }
+
+    private bool _suppressNuclearToggle;
+
+    private void Category_Changed(object sender, SelectionChangedEventArgs e) => ApplyFilter();
+    private void Tier_Changed(object sender, SelectionChangedEventArgs e) => ApplyFilter();
+
+    private void Search_Changed(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput) ApplyFilter();
+    }
+
+    private async void Nuclear_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_suppressNuclearToggle) return;
+
+        var dlg = new ContentDialog
+        {
+            Title = "Reveal NUCLEAR tweaks?",
+            Content = "NUCLEAR tweaks disable core Windows security — Defender real-time protection, " +
+                      "SmartScreen, UAC, Core Isolation and the Firewall.\n\n" +
+                      "These are for isolated machines you fully control. Everything stays revertible, " +
+                      "but only enable this if you understand the risk.\n\nShow them anyway?",
+            PrimaryButtonText = "Yes, I understand",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot,
+        };
+
+        if (await dlg.ShowAsync() == ContentDialogResult.Primary)
+        {
+            ApplyFilter();
+        }
+        else
+        {
+            // User backed out — untick without re-triggering the dialog.
+            _suppressNuclearToggle = true;
+            NuclearCheck.IsChecked = false;
+            _suppressNuclearToggle = false;
+        }
+    }
+
+    private void Nuclear_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_suppressNuclearToggle) return;
+        // Deselect any nuclear tweaks so they can't be applied while hidden.
+        foreach (var t in _engine.Tweaks.Where(t => t.Tier == TweakTier.Nuclear)) t.Selected = false;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (CategoryBox.Items.Count == 0) return;
+        string cat = CategoryBox.SelectedItem as string ?? AllCategories;
+        int tierIdx = TierBox.SelectedIndex;     // 0 all, 1 safe, 2 extreme, 3 nuclear
+        string q = (SearchBox.Text ?? "").Trim();
+        bool showNuclear = NuclearCheck.IsChecked == true;
+
+        _filtered.Clear();
+        foreach (var t in _engine.Tweaks)
+        {
+            if (t.Tier == TweakTier.Nuclear && !showNuclear) continue;   // hidden until explicitly revealed
+            if (cat != AllCategories && t.Category != cat) continue;
+            if (tierIdx > 0 && (int)t.Tier != tierIdx - 1) continue;
+            if (q.Length > 0 &&
+                t.Name.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
+                t.Description.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            _filtered.Add(t);
+        }
+        UpdateCount();
+    }
+
+    private void UpdateCount()
+    {
+        int sel = _engine.Tweaks.Count(t => t.Selected);
+        CountLine.Text = $"{_filtered.Count} shown · {_engine.AppliedCount} applied · {sel} selected";
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var t in _filtered) t.Selected = true;
+        UpdateCount();
+    }
+
+    private void Clear_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (var t in _engine.Tweaks) t.Selected = false;
+        UpdateCount();
+    }
+
+    private async void ApplySelected_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = _engine.Tweaks.Where(t => t.Selected).ToList();
+        if (selected.Count == 0) { ShowStatus("Nothing selected.", InfoBarSeverity.Warning); return; }
+
+        if (selected.Any(t => t.Tier == TweakTier.Nuclear) &&
+            !await ConfirmNuclear(selected.Count(t => t.Tier == TweakTier.Nuclear))) return;
+
+        await RunApply(selected, "selected");
+    }
+
+    private async void ApplySafe_Click(object sender, RoutedEventArgs e)
+    {
+        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe).ToList();
+        await RunApply(safe, "SAFE");
+    }
+
+    private async void RevertAll_Click(object sender, RoutedEventArgs e)
+    {
+        SetBusy(true);
+        var (ok, fail) = await _engine.RevertAllAsync();
+        SetBusy(false);
+        ShowStatus($"Reverted {ok} tweaks" + (fail > 0 ? $", {fail} failed." : "."), InfoBarSeverity.Informational);
+        UpdateCount();
+    }
+
+    private async System.Threading.Tasks.Task RunApply(List<Tweak> tweaks, string label)
+    {
+        SetBusy(true);
+        var (ok, fail) = await _engine.ApplyAsync(tweaks);
+        SetBusy(false);
+        ShowStatus($"Applied {ok} {label} tweaks" + (fail > 0 ? $", {fail} failed." : "."),
+                   fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+        UpdateCount();
+    }
+
+    private async System.Threading.Tasks.Task<bool> ConfirmNuclear(int count)
+    {
+        var dlg = new ContentDialog
+        {
+            Title = "NUCLEAR tweaks selected",
+            Content = $"You have {count} NUCLEAR tweak(s) selected. These disable core Windows security " +
+                      "(SmartScreen, UAC, Core Isolation, Firewall). Everything is revertible. Continue?",
+            PrimaryButtonText = "Apply anyway",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot,
+        };
+        return await dlg.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    private void SetBusy(bool busy) => BusyRing.IsActive = busy;
+
+    private void ShowStatus(string msg, InfoBarSeverity sev)
+    {
+        StatusBar.Message = msg;
+        StatusBar.Severity = sev;
+        StatusBar.IsOpen = true;
+    }
+}

@@ -1,16 +1,33 @@
-# VOIDTUNE v0.8
+# VOIDTUNE v0.8.2
 
 **Windows optimization suite for gamers and power users.**
 
-| Version | License | Platform | Interface |
-|---------|---------|----------|-----------|
-| 0.8 | GPL v3 | Windows 10/11 | PowerShell + WPF/XAML |
+| Version | License | Platform | Current edition |
+|---------|---------|----------|-----------------|
+| 0.8.2 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
 
 🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
 ---
 
-## 🎨 What's New in v0.8
+## Editions
+
+- **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~150 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
+- **PowerShell + WPF (original)** — the original ps2exe edition at the repo root (`VOIDTUNE.ps1`, `core/`, `modules/`, `ui/`). Still functional; superseded by the WinUI app.
+
+## 🚀 What's New in v0.8.2 (WinUI 3 edition)
+
+- **Process-reduction overhaul** — the **Processes** tweak category bundles ~50 reversible tweaks (services, scheduled tasks, per-user service templates, bloatware removal, idle third-party updaters) to cut the background process count **without disabling Windows Security**
+- **In-app auto-update** for both the portable and installer builds (checks GitHub on launch)
+- **Bloatware removal** (reversible), idle updater disables (Google / Edge), and a "Hide Security Tray Icon" tweak that keeps Defender protection fully on
+- Smarter hardware detection (discrete GPU preferred, accurate VRAM, real battery-based laptop detection)
+- NUCLEAR tweaks hidden behind an explicit "Show NUCLEAR" confirmation
+
+> Full history in [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## 🎨 What's New in v0.8 (PowerShell edition)
 
 ### One-click tiered apply
 - **SAFE / EXTREME / NUCLEAR / REVERT ALL** buttons in the topbar — apply everything up to a tier in one click, or roll every applied tweak back to Windows defaults

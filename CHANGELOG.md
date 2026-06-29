@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.8.2] - 2026-06-27 (WinUI 3 edition)
+
+### Added
+- **Process-reduction overhaul** — the **Processes** tweak category (in the Tweaks tab) now bundles ~50 reversible tweaks: services, scheduled tasks, per-user service templates (`Start=4`), bloatware Appx removal, and idle third-party updater disables — built to cut the background process count **without disabling Windows Security**
+- **Bloatware removal** (reversible): Bing News/Weather, Phone Link, Groove & Movies, Teams Chat, Clipchamp, Help/Get Started, People/Feedback, Maps/To Do/Office Hub, Cortana/Mixed Reality. Xbox / Game Bar left intact for gamers
+- **Idle updater disables**: Google Update, Edge Update + their scheduled tasks
+- **Hide Security Tray Icon** — removes `SecurityHealthSystray.exe` with Defender protection fully ON
+- Services manager expanded to 37 services; Gaming profile now disables 31
+
+### Changed
+- Removed the standalone Processes viewer page — process reduction now lives entirely in the Tweaks tab
+
+## [0.8.1] - 2026-06-27 (WinUI 3 edition)
+
+### Added
+- **Native C# / WinUI 3 rewrite** (Windows App SDK) — Mica backdrop, Fluent design, custom title bar, runs elevated. Pages: Dashboard, Tweaks, Services, Startup, Privacy, Personalize, Drivers, GPU Health, Latency, Benchmarks, Apps (winget), Backup & Restore, Script Runner, Settings
+- **In-app auto-update** — checks GitHub releases on launch; MSI flow for installed users, self-extracting ZIP swap for portable users
+- ~150 reversible tweaks incl. architecture-specific (Intel/AMD/NVIDIA/laptop) gated on detected hardware
+- Registry backup before every apply; tweak state persisted to `%LOCALAPPDATA%\VOIDTUNE`
+- Self-contained portable ZIP + MSI installer builds (`installer/build.ps1`, WiX v5)
+
+### Changed
+- Smarter hardware detection: discrete GPU preferred over integrated (registry VRAM), real battery-based laptop detection
+- NUCLEAR tweaks hidden behind an explicit "Show NUCLEAR" confirmation
+
 ## [0.8] - 2026-06-27
 
 ### Added

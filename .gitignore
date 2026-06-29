@@ -24,3 +24,12 @@ installer/*.wixpdb
 # Temp
 *.tmp
 *.bak
+
+# .NET / WinUI 3 build output
+**/bin/
+**/obj/
+**/.vs/
+*.user
+
+# Installer / release artefacts (shipped via Releases)
+VOIDTUNE.WinUI/installer/out/

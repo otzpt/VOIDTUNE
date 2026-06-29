@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="VOIDTUNE.WinUI.Views.PersonalizePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:VOIDTUNE.WinUI.Models"
+    xmlns:svc="using:VOIDTUNE.WinUI.Services"
+    xmlns:conv="using:VOIDTUNE.WinUI.Converters">
+
+    <Page.Resources>
+        <conv:HexToBrushConverter x:Key="HexToBrush" />
+        <CollectionViewSource x:Name="GroupedToggles" IsSourceGrouped="True" />
+    </Page.Resources>
+
+    <Grid Padding="32,28,32,0" RowSpacing="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="3">
+            <TextBlock Text="Personalize" FontSize="30" FontWeight="Bold" />
+            <TextBlock Text="THEME · AERO · TASKBAR · ACCENT" FontFamily="Consolas" FontSize="12"
+                       Foreground="{StaticResource BrandVioletSoft}" />
+        </StackPanel>
+
+        <!-- Accent color picker -->
+        <Border Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                CornerRadius="10" Padding="16,14">
+            <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="Accent color" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Border x:Name="CurrentSwatch" Width="22" Height="22" CornerRadius="5"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" />
+                    <TextBlock x:Name="CurrentAccentLabel" VerticalAlignment="Center" Opacity="0.7"
+                               FontFamily="Consolas" FontSize="12" />
+                </StackPanel>
+                <GridView x:Name="AccentGrid" SelectionMode="None" IsItemClickEnabled="True"
+                          ItemClick="Accent_Click">
+                    <GridView.ItemTemplate>
+                        <DataTemplate x:DataType="svc:AccentColor">
+                            <Border Width="40" Height="40" CornerRadius="7" Margin="3"
+                                    Background="{x:Bind Hex, Converter={StaticResource HexToBrush}}"
+                                    BorderBrush="#22FFFFFF" BorderThickness="1" ToolTipService.ToolTip="{x:Bind Name}" />
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                </GridView>
+            </StackPanel>
+        </Border>
+
+        <InfoBar Grid.Row="2" x:Name="StatusBar" IsOpen="False" IsClosable="True" />
+
+        <!-- Toggle groups -->
+        <ListView Grid.Row="3" x:Name="ToggleList" SelectionMode="None"
+                  ItemsSource="{x:Bind GroupedToggles.View, Mode=OneWay}">
+            <ListView.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Key}" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                                       Foreground="{StaticResource BrandVioletSoft}" Margin="0,12,0,2" />
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListView.GroupStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:PersonalizeToggle">
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                            CornerRadius="8" Padding="16,10" Margin="0,4">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                <TextBlock Text="{x:Bind Description}" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent=""
+                                          IsOn="{x:Bind Enabled, Mode=TwoWay}" Tag="{x:Bind}" Toggled="Toggle_Changed" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>

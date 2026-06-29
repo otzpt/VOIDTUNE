@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="VOIDTUNE.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls">
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== Custom title bar ===== -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Height="48" Padding="16,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+                <!-- diamond mark -->
+                <Grid Width="22" Height="22">
+                    <Border Width="15" Height="15" CornerRadius="3"
+                            BorderBrush="{StaticResource BrandViolet}" BorderThickness="1.6"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border.RenderTransform>
+                            <RotateTransform Angle="45" CenterX="7.5" CenterY="7.5" />
+                        </Border.RenderTransform>
+                    </Border>
+                    <Ellipse Width="5" Height="5" Fill="{StaticResource BrandPink}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <TextBlock Text="VOIDTUNE" FontSize="15" FontWeight="Bold"
+                           VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
+                        CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                    <TextBlock Text="v0.8.2 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                               Foreground="{StaticResource BrandVioletSoft}" />
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- ===== Navigation shell ===== -->
+        <muxc:NavigationView x:Name="Nav" Grid.Row="1"
+                             IsBackButtonVisible="Collapsed"
+                             IsSettingsVisible="True"
+                             PaneDisplayMode="Left"
+                             OpenPaneLength="232"
+                             IsTitleBarAutoPaddingEnabled="False"
+                             Loaded="Nav_Loaded"
+                             SelectionChanged="Nav_SelectionChanged">
+
+            <muxc:NavigationView.MenuItems>
+                <muxc:NavigationViewItem Content="Dashboard" Tag="dash">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="OPTIMIZE" />
+                <muxc:NavigationViewItem Content="Tweaks" Tag="tweaks">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE9F5;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Services" Tag="services">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE950;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Startup" Tag="startup">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE7B5;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Privacy" Tag="privacy">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE72E;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Personalize" Tag="personalize">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE790;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="SYSTEM" />
+                <muxc:NavigationViewItem Content="Drivers" Tag="drivers">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE950;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="GPU Health" Tag="gpu">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xF211;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Latency" Tag="latency">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE945;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Benchmarks" Tag="bench">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE7C1;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="TOOLS" />
+                <muxc:NavigationViewItem Content="Apps" Tag="apps">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE896;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Backup &amp; Restore" Tag="backup">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE777;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Script Runner" Tag="script">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE756;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+            </muxc:NavigationView.MenuItems>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <InfoBar x:Name="UpdateBar" Grid.Row="0" Margin="12,12,12,0" IsOpen="False"
+                         Severity="Informational" IsClosable="True">
+                    <InfoBar.ActionButton>
+                        <Button Content="View update" Click="UpdateBar_View" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+                <Frame x:Name="ContentFrame" Grid.Row="1" />
+            </Grid>
+        </muxc:NavigationView>
+    </Grid>
+</Window>
