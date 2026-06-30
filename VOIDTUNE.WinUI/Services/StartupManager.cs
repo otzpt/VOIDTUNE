@@ -115,13 +115,17 @@ public sealed class StartupManager
         catch { /* ignore */ }
     }
 
+    /// <summary>
+    /// Applies the enable/disable change to the registry or Startup folder. Does NOT refresh
+    /// the bound <see cref="Items"/> collection — the caller decides when to rebuild, because
+    /// rebuilding from inside a list item's event handler crashes the ListView.
+    /// </summary>
     public void SetEnabled(StartupItem item, bool enable)
     {
         if (item.Scope.StartsWith("Folder:", StringComparison.Ordinal))
             ToggleFolder(item, enable);
         else
             ToggleRegistry(item, enable);
-        Refresh();
     }
 
     private void ToggleRegistry(StartupItem item, bool enable)

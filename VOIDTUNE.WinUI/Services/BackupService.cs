@@ -34,12 +34,11 @@ public static class BackupService
         {
             string folder = Path.Combine(BackupRoot, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}_{note}");
             Directory.CreateDirectory(folder);
-            int i = 0;
-            foreach (var key in Keys)
-            {
-                string file = Path.Combine(folder, $"key{i++}.reg");
-                await CommandRunner.ExecAsync($"reg export \"{key}\" \"{file}\" /y");
-            }
+            // Each export spawns its own reg.exe; they touch different keys and are
+            // independent, so run them concurrently instead of one-at-a-time.
+            var exports = Keys.Select((key, i) =>
+                CommandRunner.ExecAsync($"reg export \"{key}\" \"{Path.Combine(folder, $"key{i}.reg")}\" /y"));
+            await Task.WhenAll(exports);
             return Path.GetFileName(folder);
         }
         catch

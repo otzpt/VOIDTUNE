@@ -12,6 +12,9 @@ public sealed class ServiceManager
 {
     public ObservableCollection<ServiceItem> Services { get; } = new();
 
+    // Bound on concurrent sc.exe processes when applying a whole profile at once.
+    private static readonly int MaxParallel = Math.Clamp(Environment.ProcessorCount, 4, 12);
+
     private static readonly (string Name, string Desc)[] Catalog =
     {
         ("DiagTrack",          "Windows Telemetry — safe to disable"),
@@ -104,8 +107,10 @@ public sealed class ServiceManager
 
     public async Task ApplyGamingProfileAsync()
     {
-        foreach (var name in GamingDisable)
-            await CommandRunner.ExecAsync($"sc config {name} start= disabled & sc stop {name} & exit /b 0");
+        // Each service is independent, so disable them concurrently instead of waiting on
+        // ~30 sc.exe processes one after another.
+        await Parallel.ForEachAsync(GamingDisable, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel },
+            async (name, _) => await CommandRunner.ExecAsync($"sc config {name} start= disabled & sc stop {name} & exit /b 0"));
         Refresh();
     }
 
@@ -119,8 +124,8 @@ public sealed class ServiceManager
             ["SEMgrSvc"] = "demand", ["SensorService"] = "demand", ["PcaSvc"] = "auto",
             ["CDPSvc"] = "auto", ["DPS"] = "auto", ["W32Time"] = "demand",
         };
-        foreach (var (name, start) in restore)
-            await CommandRunner.ExecAsync($"sc config {name} start= {start} & sc start {name} & exit /b 0");
+        await Parallel.ForEachAsync(restore, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel },
+            async (kv, _) => await CommandRunner.ExecAsync($"sc config {kv.Key} start= {kv.Value} & sc start {kv.Key} & exit /b 0"));
         Refresh();
     }
 }

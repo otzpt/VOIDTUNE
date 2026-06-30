@@ -31,13 +31,16 @@ public sealed partial class StartupPage : Page
         if (_loading) return;
         if (sender is ToggleSwitch { Tag: StartupItem it })
         {
-            _loading = true;
-            _mgr.SetEnabled(it, it.Enabled);
-            _loading = false;
-            CountLine.Text = $"{_mgr.Items.Count} STARTUP ENTRIES";
-            StatusBar.Message = $"{it.Name}: {(it.Enabled ? "enabled" : "disabled")} at startup.";
+            bool enable = it.Enabled;   // TwoWay binding already flipped it to the new state
+            _mgr.SetEnabled(it, enable);
+            StatusBar.Message = $"{it.Name}: {(enable ? "enabled" : "disabled")} at startup.";
             StatusBar.Severity = InfoBarSeverity.Success;
             StatusBar.IsOpen = true;
+
+            // Rebuild the list once the Toggled event has unwound. Calling Reload()
+            // (which clears the bound collection) directly from here tears out the very
+            // ToggleSwitch container that raised this event and crashes the ListView.
+            DispatcherQueue.TryEnqueue(Reload);
         }
     }
 }

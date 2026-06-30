@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.3] - 2026-06-30 (WinUI 3 edition)
+
+### Fixed
+- **Startup page crash** — toggling a startup entry on/off no longer crashes the app. The `Toggled` handler was rebuilding the bound `ListView` collection from inside the ToggleSwitch's own event, tearing out the live container; the rebuild is now deferred until after the event unwinds
+- **Slow tweak apply** — applying tweaks no longer blocks for tens of seconds. The registry backup exports and the apply/revert commands now run concurrently (bounded) instead of strictly one process at a time
+
+### Optimized
+- **Service profiles** — the Gaming and Normal service profiles apply their `sc` changes in parallel instead of sequentially, finishing in a fraction of the time
+- UI-bound state (`Applied` / `Enabled`) is now mutated only on the caller's thread after the parallel work completes, avoiding cross-thread UI exceptions
+
 ## [0.8.2] - 2026-06-27 (WinUI 3 edition)
 
 ### Added
