@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.6] - 2026-07-01 (WinUI 3 edition)
+
+### Fixed
+- **Tweaks that reported "failed" now apply cleanly.** Several tweaks returned a non-zero exit code for benign reasons and were counted as failures:
+  - The app-removal tweaks (Bing News/Weather, Zune, Teams, Get Help, People/Feedback, Maps/To Do, Cortana, etc.) pass multiple package name patterns; when any pattern matched nothing, `Get-AppxPackage` raised an error that made PowerShell exit non-zero even though it removed what it could. They're now best-effort (`try/catch; exit 0`).
+  - "Hide Security Tray Icon" (value already absent), "Disable NTFS Journal" (journal already inactive), and "CTCP" (deprecated on modern Windows) no longer report failure when the target state is already met.
+  - "No Memory Compression" hardened against transient errors.
+- **PowerShell tweaks are now sent as `-EncodedCommand`** (base64) instead of inline `-Command "…"`, which corrupted any script containing its own double quotes (the MSI-mode and write-cache tweaks). Quote-proof.
+
+### Added
+- **Self-elevation fallback.** The manifest already requests admin (auto UAC prompt); as a safety net the app now also relaunches itself elevated if it ever starts unelevated (e.g. launched via a host that ignores the manifest).
+
 ## [0.8.5] - 2026-07-01 (WinUI 3 edition)
 
 ### Fixed

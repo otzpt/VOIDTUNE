@@ -20,7 +20,15 @@ public static class CommandRunner
             return Task.FromResult(new CommandResult(true, "no-op"));
 
         if (command.StartsWith("PS:", StringComparison.Ordinal))
-            return RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{command[3..].Trim()}\"");
+        {
+            // Pass the script as a base64 -EncodedCommand instead of inline -Command "...".
+            // Inline quoting breaks whenever the script itself contains double quotes (e.g. the
+            // MSI-mode and write-cache tweaks), which silently corrupted those commands and made
+            // them fail. EncodedCommand is quote-proof.
+            string ps = command[3..].Trim();
+            string b64 = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(ps));
+            return RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {b64}");
+        }
 
         return RunAsync("cmd.exe", $"/c {command}");
     }
