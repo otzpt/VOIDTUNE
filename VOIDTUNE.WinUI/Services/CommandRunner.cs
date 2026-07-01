@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace VOIDTUNE.WinUI.Services;
@@ -40,30 +41,54 @@ public static class CommandRunner
         finally { try { File.Delete(file); } catch { /* ignore */ } }
     }
 
-    private static Task<CommandResult> RunAsync(string fileName, string arguments)
+    /// <summary>
+    /// Per-command ceiling. A few tweaks (WMI enumeration, fsutil usn) are legitimately slow,
+    /// but nothing may block the batch forever — past this the process tree is killed and the
+    /// command is reported as failed so the apply always finishes.
+    /// </summary>
+    private const int TimeoutSeconds = 90;
+
+    private static async Task<CommandResult> RunAsync(string fileName, string arguments)
     {
-        return Task.Run(() =>
+        try
         {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var p = Process.Start(psi)!;
+            // Give the child an EOF on stdin so a command that unexpectedly prompts can't hang.
+            try { p.StandardInput.Close(); } catch { /* ignore */ }
+
+            // Read both pipes concurrently. Reading one to the end before the other deadlocks
+            // the moment a command fills the other pipe's ~4 KB buffer — this was the "stuck at
+            // N-of-M" hang: a couple of commands with chatty stderr never returned.
+            Task<string> stdout = p.StandardOutput.ReadToEndAsync();
+            Task<string> stderr = p.StandardError.ReadToEndAsync();
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-                using var p = Process.Start(psi)!;
-                string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-                p.WaitForExit();
-                return new CommandResult(p.ExitCode == 0, output.Trim());
+                await p.WaitForExitAsync(cts.Token);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                return new CommandResult(false, ex.Message);
+                try { p.Kill(entireProcessTree: true); } catch { /* already exiting */ }
+                return new CommandResult(false, $"Timed out after {TimeoutSeconds}s");
             }
-        });
+
+            string output = ((await stdout) + (await stderr)).Trim();
+            return new CommandResult(p.ExitCode == 0, output);
+        }
+        catch (Exception ex)
+        {
+            return new CommandResult(false, ex.Message);
+        }
     }
 }

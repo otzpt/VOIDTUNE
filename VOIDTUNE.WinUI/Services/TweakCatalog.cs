@@ -88,16 +88,12 @@ public static class TweakCatalog
     private static readonly Tweak[] Baseline =
     {
         // ── CPU ──────────────────────────────────────────────────────────────
-        new() { Id="cpu1", Category="CPU", Tier=TweakTier.Safe, Name="High Performance Plan", Description="Set the active power scheme to High Performance.",
-            ApplyCmd="powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
         new() { Id="cpu2", Category="CPU", Tier=TweakTier.Safe, Name="Win32 Priority Separation", Description="Foreground apps get the largest CPU time slices.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 38 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 2 /f" },
         new() { Id="cpu3", Category="CPU", Tier=TweakTier.Safe, Name="High-Precision Timer", Description="Request a high-resolution global system timer.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v GlobalTimerResolutionRequests /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v GlobalTimerResolutionRequests /t REG_DWORD /d 0 /f" },
         new() { Id="cpu4", Category="CPU", Tier=TweakTier.Safe, Name="Perf Boost Mode", Description="Maximum processor turbo boost.",
             ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 2 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 && powercfg -setactive scheme_current" },
-        new() { Id="cpu5", Category="CPU", Tier=TweakTier.Extreme, Name="Ultimate Perf Plan", Description="Unlock the hidden ultra-performance power plan.",
-            ApplyCmd="powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
         new() { Id="cpu6", Category="CPU", Tier=TweakTier.Extreme, Name="Force All Cores", Description="Disable CPU core parking.",
             ApplyCmd="powercfg -setacvalueindex 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 54533251-82be-4824-96c1-47b60b740d00 0cc5b647-c1df-4637-891a-dec35c318583 100 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="powercfg -setacvalueindex 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 54533251-82be-4824-96c1-47b60b740d00 0cc5b647-c1df-4637-891a-dec35c318583 0 & powercfg -setactive scheme_current & exit /b 0" },
         new() { Id="cpu7", Category="CPU", Tier=TweakTier.Extreme, Name="No Power Throttling", Description="Remove background CPU power limits.",
@@ -306,12 +302,8 @@ public static class TweakCatalog
             ApplyCmd=@"schtasks /Change /TN ""GoogleUpdateTaskMachineCore"" /Disable 2>nul & schtasks /Change /TN ""GoogleUpdateTaskMachineUA"" /Disable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineCore"" /Disable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineUA"" /Disable 2>nul & exit /b 0", RevertCmd=@"schtasks /Change /TN ""GoogleUpdateTaskMachineCore"" /Enable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineCore"" /Enable 2>nul & exit /b 0" },
 
         // ── Power ─────────────────────────────────────────────────────────────
-        new() { Id="pow1", Category="Power", Tier=TweakTier.Safe, Name="Balanced Plan", Description="Standard balanced power plan.",
-            ApplyCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e", RevertCmd="" },
-        new() { Id="pow2", Category="Power", Tier=TweakTier.Safe, Name="High Performance", Description="Maximum clocks, no power saving.",
-            ApplyCmd="powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
-        new() { Id="pow3", Category="Power", Tier=TweakTier.Extreme, Name="Ultimate Performance", Description="Unlock the hidden Ultimate Performance power plan.",
-            ApplyCmd="powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
+        new() { Id="pow3", Category="Power", Tier=TweakTier.Extreme, Name="Ultimate Performance", Description="Unlock AND activate the hidden Ultimate Performance power plan — max clocks, best FPS.",
+            ApplyCmd=@"PS:$l=(powercfg -list | Out-String); $m=[regex]::Match($l,'([0-9a-fA-F-]{36})\s*\(Ultimate Performance\)'); if($m.Success){$g=$m.Groups[1].Value}else{$o=(powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-String);$g=[regex]::Match($o,'([0-9a-fA-F-]{36})').Value}; if($g){powercfg -setactive $g}", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
         new() { Id="pow4", Category="Power", Tier=TweakTier.Safe, Name="Disable Sleep (AC)", Description="Never sleep while plugged in.",
             ApplyCmd="powercfg /change standby-timeout-ac 0", RevertCmd="powercfg /change standby-timeout-ac 30" },
         new() { Id="pow5", Category="Power", Tier=TweakTier.Safe, Name="Disable Hibernate", Description="Free hiberfil.sys disk space and speed up shutdown.",

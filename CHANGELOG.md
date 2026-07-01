@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.5] - 2026-07-01 (WinUI 3 edition)
+
+### Fixed
+- **Apply hang near the end** — applying could freeze partway (e.g. "161 / 163") forever. `CommandRunner` read a process's stdout and stderr sequentially with no timeout, which deadlocks when a command fills the other pipe's buffer. It now reads both pipes concurrently, closes stdin (so nothing can wait for input), and kills any command that exceeds a 90s ceiling so the batch always completes
+
+### Changed
+- **Power plans trimmed to one** — removed the Balanced and High Performance plan tweaks (and their duplicates in the CPU category); the only power-plan tweak left is **Ultimate Performance**, which now also *activates* the plan (not just unlocks it) for maximum performance. Power settings (Disable Sleep/Hibernate/Fast Startup, CPU 100% Min/Max) are unchanged
+
 ## [0.8.4] - 2026-07-01 (WinUI 3 edition)
 
 ### Fixed
