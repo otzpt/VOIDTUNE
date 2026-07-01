@@ -1,13 +1,15 @@
 # Changelog
 
-## [0.8.3.1] - 2026-07-01 (WinUI 3 edition)
+## [0.8.4] - 2026-07-01 (WinUI 3 edition)
 
 ### Fixed
-- **Startup toggle loop** — hotfix for 0.8.3: toggling a startup entry could spin into an infinite loop (the list was rebuilt on every toggle, and the TwoWay `IsOn` binding re-fired the event as the containers re-realized). Toggling now updates the entry in place and ignores the binding's own echo, so one toggle does exactly one change
-- Updater now compares all four version fields, so `0.8.3.1` is correctly detected as newer than `0.8.3`
+- **Startup toggle loop** — regression from 0.8.3: toggling a startup entry could spin into an infinite loop (the list was rebuilt on every toggle, and the TwoWay `IsOn` binding re-fired the event as the containers re-realized). Toggling now updates the entry in place and ignores the binding's own echo, so one toggle does exactly one change
 
 ### Added
 - **Apply progress dialog** — applying or reverting tweaks now shows a modal dialog with a live progress bar ("Creating registry backup…", then "Applying 12 / 40") instead of just a small spinner
+
+### Changed
+- Updater now compares all four version fields for accurate update detection
 
 ## [0.8.3] - 2026-06-30 (WinUI 3 edition)
 

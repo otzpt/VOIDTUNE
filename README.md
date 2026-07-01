@@ -1,10 +1,10 @@
-# VOIDTUNE v0.8.3.1
+# VOIDTUNE v0.8.4
 
 **Windows optimization suite for gamers and power users.**
 
 | Version | License | Platform | Current edition |
 |---------|---------|----------|-----------------|
-| 0.8.3.1 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
+| 0.8.4 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
 
 🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
@@ -15,11 +15,11 @@
 - **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~150 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
 - **PowerShell + WPF (original)** — the original ps2exe edition at the repo root (`VOIDTUNE.ps1`, `core/`, `modules/`, `ui/`). Still functional; superseded by the WinUI app.
 
-## 🚀 What's New in v0.8.3.1 (WinUI 3 edition)
+## 🚀 What's New in v0.8.4 (WinUI 3 edition)
 
-- **Hotfix: startup toggle loop** — toggling a startup entry could spin into an infinite loop; it now updates the entry in place and does exactly one change per toggle
+- **Fixed: startup toggle loop** — toggling a startup entry could spin into an infinite loop; it now updates the entry in place and does exactly one change per toggle
 - **Apply progress dialog** — applying/reverting tweaks shows a live progress bar ("Applying 12 / 40") instead of a small spinner
-- Updater now compares all four version fields (so `0.8.3.1` registers as newer than `0.8.3`)
+- Updater now compares all four version fields for accurate update detection
 
 > Full history in [CHANGELOG.md](CHANGELOG.md).
 
@@ -80,14 +80,14 @@ VOIDTUNE is a free, open-source Windows optimizer and debloater built with Power
 
 ### Option A — MSI installer (recommended)
 
-1. Download **`VOIDTUNE-0.8.3.1-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
+1. Download **`VOIDTUNE-0.8.4-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
 2. Run it and follow the wizard.
 
 Installs to `Program Files`, adds Start Menu + Desktop shortcuts, and registers in Add/Remove Programs for a clean uninstall.
 
 ### Option B — Portable ZIP
 
-1. Download **`VOIDTUNE-0.8.3.1-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
+1. Download **`VOIDTUNE-0.8.4-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
 2. Extract it — **keep all files and folders together**.
 3. Run `VOIDTUNE.exe` (it auto-requests Administrator).
 

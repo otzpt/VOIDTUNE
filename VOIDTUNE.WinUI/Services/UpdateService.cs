@@ -19,7 +19,7 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.3.1";
+    public const string CurrentVersion = "0.8.4";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
@@ -176,7 +176,7 @@ public static class UpdateService
     }
 
     // Reads the leading numeric components (a.b.c.d) and ignores any pre-release suffix.
-    // Uses all four fields so hotfix bumps like 0.8.3.1 register as newer than 0.8.3(.0).
+    // Uses all four fields so a four-part hotfix bump still registers as newer.
     private static Version? Parse(string v)
     {
         var nums = new List<int>();
