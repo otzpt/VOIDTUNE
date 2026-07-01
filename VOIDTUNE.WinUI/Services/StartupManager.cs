@@ -50,6 +50,7 @@ public sealed class StartupManager
                     Location = $"{scope}\\…\\Run",
                     Scope = scope,
                     Enabled = enabled,
+                    Committed = enabled,
                 });
             }
         }
@@ -72,6 +73,7 @@ public sealed class StartupManager
                     Location = $"{scope}\\…\\Run (disabled)",
                     Scope = scope,
                     Enabled = false,
+                    Committed = false,
                 });
             }
         }
@@ -93,6 +95,7 @@ public sealed class StartupManager
                         Location = label,
                         Scope = "Folder:" + folder,
                         Enabled = true,
+                        Committed = true,
                     });
                 }
             }
@@ -108,6 +111,7 @@ public sealed class StartupManager
                         Location = label + " (disabled)",
                         Scope = "Folder:" + folder,
                         Enabled = false,
+                        Committed = false,
                     });
                 }
             }
@@ -116,9 +120,10 @@ public sealed class StartupManager
     }
 
     /// <summary>
-    /// Applies the enable/disable change to the registry or Startup folder. Does NOT refresh
-    /// the bound <see cref="Items"/> collection — the caller decides when to rebuild, because
-    /// rebuilding from inside a list item's event handler crashes the ListView.
+    /// Applies the enable/disable change to the registry or Startup folder and updates the
+    /// item in place (Location label, and the file path for folder entries). Deliberately does
+    /// NOT rebuild the bound <see cref="Items"/> collection: rebuilding re-realizes the
+    /// ToggleSwitch containers, whose TwoWay IsOn binding re-fires Toggled and loops/crashes.
     /// </summary>
     public void SetEnabled(StartupItem item, bool enable)
     {
@@ -126,6 +131,13 @@ public sealed class StartupManager
             ToggleFolder(item, enable);
         else
             ToggleRegistry(item, enable);
+
+        // Reflect the new state in the label without touching the collection.
+        const string suffix = " (disabled)";
+        string baseLoc = item.Location.EndsWith(suffix, StringComparison.Ordinal)
+            ? item.Location[..^suffix.Length]
+            : item.Location;
+        item.Location = enable ? baseLoc : baseLoc + suffix;
     }
 
     private void ToggleRegistry(StartupItem item, bool enable)
@@ -159,16 +171,9 @@ public sealed class StartupManager
             string disabledDir = Path.Combine(folder, DisabledFolderName);
             Directory.CreateDirectory(disabledDir);
             string fileName = Path.GetFileName(item.Command);
-            if (enable)
-            {
-                string dest = Path.Combine(folder, fileName);
-                if (File.Exists(item.Command)) File.Move(item.Command, dest, true);
-            }
-            else
-            {
-                string dest = Path.Combine(disabledDir, fileName);
-                if (File.Exists(item.Command)) File.Move(item.Command, dest, true);
-            }
+            string dest = enable ? Path.Combine(folder, fileName) : Path.Combine(disabledDir, fileName);
+            if (File.Exists(item.Command)) File.Move(item.Command, dest, true);
+            item.Command = dest;   // keep the path current so a later re-toggle finds the file
         }
         catch { /* ignore */ }
     }

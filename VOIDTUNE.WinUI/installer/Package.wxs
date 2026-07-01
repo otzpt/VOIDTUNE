@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- VOIDTUNE WinUI installer. Build with WiX v5:  see build.ps1 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.3.0"
+  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.3.1"
            UpgradeCode="7C9E6A2F-4B1D-4A8E-9F3C-2E6D5B8A1C40"
            Scope="perMachine" InstallerVersion="500">
 
@@ -28,7 +28,7 @@
     <Component Id="RegistryEntries" Directory="INSTALLFOLDER" Guid="*">
       <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="InstallPath" Type="string"
                      Value="[INSTALLFOLDER]" KeyPath="yes" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.3" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.3.1" />
     </Component>
 
     <Component Id="StartMenuShortcut" Directory="ShortcutFolder" Guid="*">

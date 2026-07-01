@@ -31,16 +31,18 @@ public sealed partial class StartupPage : Page
         if (_loading) return;
         if (sender is ToggleSwitch { Tag: StartupItem it })
         {
-            bool enable = it.Enabled;   // TwoWay binding already flipped it to the new state
-            _mgr.SetEnabled(it, enable);
+            // The TwoWay IsOn binding also raises Toggled when a container is (re)realized,
+            // not just on user clicks. Only act when the value actually changed from the last
+            // committed state — otherwise scrolling/rebuilds would re-toggle entries in a loop.
+            if (it.Enabled == it.Committed) return;
+
+            bool enable = it.Enabled;
+            it.Committed = enable;
+            _mgr.SetEnabled(it, enable);   // updates the item in place; does NOT rebuild the list
+
             StatusBar.Message = $"{it.Name}: {(enable ? "enabled" : "disabled")} at startup.";
             StatusBar.Severity = InfoBarSeverity.Success;
             StatusBar.IsOpen = true;
-
-            // Rebuild the list once the Toggled event has unwound. Calling Reload()
-            // (which clears the bound collection) directly from here tears out the very
-            // ToggleSwitch container that raised this event and crashes the ListView.
-            DispatcherQueue.TryEnqueue(Reload);
         }
     }
 }

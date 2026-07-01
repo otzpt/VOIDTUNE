@@ -145,21 +145,70 @@ public sealed partial class TweaksPage : Page
 
     private async void RevertAll_Click(object sender, RoutedEventArgs e)
     {
-        SetBusy(true);
-        var (ok, fail) = await _engine.RevertAllAsync();
-        SetBusy(false);
+        var applied = _engine.Tweaks.Where(t => t.Applied).ToList();
+        if (applied.Count == 0) { ShowStatus("No applied tweaks to revert.", InfoBarSeverity.Informational); return; }
+
+        var (ok, fail) = await RunWithProgress("Reverting tweaks", p => _engine.RevertAsync(applied, p));
         ShowStatus($"Reverted {ok} tweaks" + (fail > 0 ? $", {fail} failed." : "."), InfoBarSeverity.Informational);
         UpdateCount();
     }
 
     private async System.Threading.Tasks.Task RunApply(List<Tweak> tweaks, string label)
     {
-        SetBusy(true);
-        var (ok, fail) = await _engine.ApplyAsync(tweaks);
-        SetBusy(false);
+        if (tweaks.Count == 0) { ShowStatus("Nothing to apply.", InfoBarSeverity.Warning); return; }
+
+        var (ok, fail) = await RunWithProgress("Applying tweaks", p => _engine.ApplyAsync(tweaks, p));
         ShowStatus($"Applied {ok} {label} tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         UpdateCount();
+    }
+
+    /// <summary>
+    /// Runs an apply/revert operation behind a modal dialog with a live progress bar, so the
+    /// user gets clear "Applying 12 / 40" feedback instead of a tiny spinner. The op reports
+    /// progress through the passed <see cref="IProgress{T}"/>.
+    /// </summary>
+    private async System.Threading.Tasks.Task<(int ok, int fail)> RunWithProgress(
+        string title, Func<IProgress<TweakProgress>, System.Threading.Tasks.Task<(int ok, int fail)>> op)
+    {
+        var status = new TextBlock { Text = "Preparing…", Opacity = 0.85, TextWrapping = TextWrapping.Wrap };
+        var bar = new ProgressBar { Minimum = 0, Maximum = 1, Value = 0, IsIndeterminate = true, Width = 340 };
+        var panel = new StackPanel { Spacing = 14, MinWidth = 360 };
+        panel.Children.Add(status);
+        panel.Children.Add(bar);
+
+        var dlg = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            XamlRoot = this.XamlRoot,
+        };
+
+        var progress = new Progress<TweakProgress>(p =>
+        {
+            if (p.Total <= 0)
+            {
+                bar.IsIndeterminate = true;
+                status.Text = p.Phase;
+            }
+            else
+            {
+                bar.IsIndeterminate = false;
+                bar.Maximum = p.Total;
+                bar.Value = p.Done;
+                status.Text = $"{p.Phase}  {p.Done} / {p.Total}";
+            }
+        });
+
+        _ = dlg.ShowAsync();
+        try
+        {
+            return await op(progress);
+        }
+        finally
+        {
+            dlg.Hide();
+        }
     }
 
     private async System.Threading.Tasks.Task<bool> ConfirmNuclear(int count)
@@ -176,8 +225,6 @@ public sealed partial class TweaksPage : Page
         };
         return await dlg.ShowAsync() == ContentDialogResult.Primary;
     }
-
-    private void SetBusy(bool busy) => BusyRing.IsActive = busy;
 
     private void ShowStatus(string msg, InfoBarSeverity sev)
     {

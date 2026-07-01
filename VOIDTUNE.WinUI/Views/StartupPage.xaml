@@ -46,7 +46,7 @@
                                 <TextBlock Text="{x:Bind Command}" Opacity="0.5" FontSize="11" FontFamily="Consolas"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{x:Bind Location}" VerticalAlignment="Center"
+                            <TextBlock Grid.Column="1" Text="{x:Bind Location, Mode=OneWay}" VerticalAlignment="Center"
                                        Opacity="0.6" FontSize="11" FontFamily="Consolas" />
                             <ToggleSwitch Grid.Column="2" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent=""
                                           IsOn="{x:Bind Enabled, Mode=TwoWay}" Tag="{x:Bind}" Toggled="Toggle_Changed" />

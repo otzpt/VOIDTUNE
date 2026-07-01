@@ -19,7 +19,7 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.3";
+    public const string CurrentVersion = "0.8.3.1";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
@@ -175,7 +175,8 @@ public static class UpdateService
         return lv != null && cv != null && lv > cv;
     }
 
-    // Reads the leading numeric components (a.b.c) and ignores any pre-release suffix.
+    // Reads the leading numeric components (a.b.c.d) and ignores any pre-release suffix.
+    // Uses all four fields so hotfix bumps like 0.8.3.1 register as newer than 0.8.3(.0).
     private static Version? Parse(string v)
     {
         var nums = new List<int>();
@@ -184,8 +185,8 @@ public static class UpdateService
             if (int.TryParse(part, out int n)) nums.Add(n);
             else break;
         }
-        while (nums.Count < 3) nums.Add(0);
-        try { return new Version(nums[0], nums[1], nums[2]); }
+        while (nums.Count < 4) nums.Add(0);
+        try { return new Version(nums[0], nums[1], nums[2], nums[3]); }
         catch { return null; }
     }
 }
