@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.8] - 2026-07-03 (WinUI 3 edition)
+
+### The Void redesign
+- **New Dashboard** — a living hero panel: animated **health ring** with a smooth score sweep, an ambient **starfield**, live **CPU / RAM sparklines**, per-drive storage meters, uptime + hardware chips, and four one-click quick actions (Apply SAFE · Revert all · **Create restore point** · Clean temp + DNS).
+- **Tweaks tab reorganized** — tweaks are now grouped into **14 color-coded sections** (Gaming, CPU, GPU, Memory, Latency, Network, Power, Storage, Processes, Debloat, Background, Privacy, Audio, Restore) with icons and per-section counts, in a curated order. Search and tier filters work across groups; leftover Nuclear UI removed.
+- **Void design system** — signature violet→pink gradients, glow cards, an ambient nebula glow across the whole window, staggered entrance animations, and a **Discord support link** in the navigation pane.
+
+### Added
+- New quality tweaks: **Disable Search Highlights**, **No Startup App Delay**, **Cloudflare DNS** (1.1.1.1, revert restores DHCP), **Disable Core Parking**, **No Edge Preload**, **NTFS RAM Boost**.
+- Dashboard **Create restore point** quick action — a safety net before heavy tweaking.
+
+### Changed
+- Health score is now honest — it reflects actual CPU/RAM pressure and process count instead of inflating with tweak count.
+
 ## [0.8.7] - 2026-07-02 (WinUI 3 edition)
 
 ### Added

@@ -11,6 +11,26 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- ===== Ambient void: faint nebula glow over the Mica backdrop ===== -->
+        <Grid Grid.RowSpan="2" IsHitTestVisible="False">
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.12,0.05" RadiusX="0.75" RadiusY="0.75">
+                        <GradientStop Color="#178B5CF6" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.95,1.0" RadiusX="0.8" RadiusY="0.8">
+                        <GradientStop Color="#12F472B6" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+        </Grid>
+
         <!-- ===== Custom title bar ===== -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Height="48" Padding="16,0,0,0">
             <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
@@ -30,7 +50,7 @@
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
                         CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.7 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                    <TextBlock Text="v0.8.8 · WinUI 3" FontSize="10" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                 </Border>
             </StackPanel>
@@ -97,6 +117,20 @@
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE756;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
             </muxc:NavigationView.MenuItems>
+
+            <muxc:NavigationView.PaneFooter>
+                <StackPanel Margin="4,0,4,6">
+                    <HyperlinkButton NavigateUri="https://discord.gg/vAWqWD2e6R"
+                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                     Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <FontIcon Glyph="&#xE8F2;" FontSize="15" Foreground="{StaticResource BrandVioletSoft}" />
+                            <TextBlock Text="Discord · support" FontSize="13"
+                                       Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+            </muxc:NavigationView.PaneFooter>
 
             <Grid>
                 <Grid.RowDefinitions>

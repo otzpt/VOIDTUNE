@@ -2,32 +2,94 @@
 <Page
     x:Class="VOIDTUNE.WinUI.Views.DashboardPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
-    <Page.Resources>
-        <Style x:Key="StatCard" TargetType="Border">
-            <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="20" />
-        </Style>
-    </Page.Resources>
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:VOIDTUNE.WinUI.Models">
 
     <ScrollViewer>
-        <StackPanel Padding="32" Spacing="22" MaxWidth="1120" HorizontalAlignment="Stretch">
+        <StackPanel Padding="32,28,32,32" Spacing="18" MaxWidth="1180" HorizontalAlignment="Stretch">
+            <StackPanel.ChildrenTransitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition IsStaggeringEnabled="True" FromVerticalOffset="28" />
+                </TransitionCollection>
+            </StackPanel.ChildrenTransitions>
 
-            <!-- Header -->
-            <StackPanel Spacing="3">
-                <TextBlock Text="Dashboard" FontSize="30" FontWeight="Bold" />
-                <TextBlock Text="SYSTEM HEALTH OVERVIEW" FontFamily="Consolas" FontSize="12"
-                           Foreground="{StaticResource BrandVioletSoft}" />
-            </StackPanel>
+            <!-- ═══════════ HERO: the void ═══════════ -->
+            <Grid CornerRadius="16" BorderThickness="1" BorderBrush="#3D8B5CF6"
+                  Background="{StaticResource HeroBackdrop}" MinHeight="230">
+                <!-- starfield (generated in code) -->
+                <Canvas x:Name="StarCanvas" IsHitTestVisible="False" Margin="6" />
 
-            <!-- Stat cards -->
-            <Grid ColumnSpacing="16" RowSpacing="16">
+                <Grid Padding="30,24" ColumnSpacing="34">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Health ring -->
+                    <Grid Grid.Column="0" Width="178" Height="178" VerticalAlignment="Center">
+                        <Ellipse Stroke="#26FFFFFF" StrokeThickness="12" Margin="6" />
+                        <Path x:Name="RingArc" Stroke="{StaticResource VoidGradientStrong}" StrokeThickness="12"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock x:Name="RingScore" Text="—" FontSize="44" FontWeight="Bold"
+                                       HorizontalAlignment="Center" Foreground="{StaticResource VoidGradient}" />
+                            <TextBlock x:Name="RingLabel" Text="SCANNING" FontFamily="Consolas" FontSize="11"
+                                       CharacterSpacing="160" HorizontalAlignment="Center" Opacity="0.7" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Identity + system chips -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="14">
+                        <StackPanel Spacing="4">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="VOIDTUNE" FontSize="26" FontWeight="Bold" />
+                                <Border Style="{StaticResource Chip}" VerticalAlignment="Center"
+                                        Background="#2AF472B6" BorderBrush="#55F472B6">
+                                    <TextBlock x:Name="StatusChip" Text="SYSTEM NOMINAL" FontFamily="Consolas"
+                                               FontSize="10" FontWeight="Bold" Foreground="#F9A8D4" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="PRECISION WINDOWS OPTIMIZATION · EVERYTHING REVERSIBLE"
+                                       Style="{StaticResource MonoCaption}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Border Style="{StaticResource Chip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <FontIcon Glyph="&#xE950;" FontSize="12" Foreground="{StaticResource BrandVioletSoft}" />
+                                        <TextBlock x:Name="CpuChip" Text="CPU" FontFamily="Consolas" FontSize="11" MaxWidth="340" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Chip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <FontIcon Glyph="&#xF211;" FontSize="12" Foreground="{StaticResource BrandPink}" />
+                                        <TextBlock x:Name="GpuChip" Text="GPU" FontFamily="Consolas" FontSize="11" MaxWidth="340" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Border Style="{StaticResource Chip}">
+                                    <TextBlock x:Name="RamChip" Text="RAM" FontFamily="Consolas" FontSize="11" />
+                                </Border>
+                                <Border Style="{StaticResource Chip}">
+                                    <TextBlock x:Name="BuildChip" Text="BUILD" FontFamily="Consolas" FontSize="11" />
+                                </Border>
+                                <Border Style="{StaticResource Chip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <FontIcon Glyph="&#xE823;" FontSize="12" Foreground="{StaticResource InfoBlue}" />
+                                        <TextBlock x:Name="UptimeChip" Text="UPTIME" FontFamily="Consolas" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ═══════════ Live stat tiles ═══════════ -->
+            <Grid ColumnSpacing="14">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -35,81 +97,163 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- CPU -->
-                <Border Grid.Column="0" Style="{StaticResource StatCard}">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="CPU" FontFamily="Consolas" FontSize="11" Opacity="0.6" />
-                        <TextBlock x:Name="CpuValue" Text="—%" FontSize="32" FontWeight="Bold"
-                                   Foreground="{StaticResource BrandVioletSoft}" />
-                        <ProgressBar x:Name="CpuBar" Minimum="0" Maximum="100" Value="0" Height="4"
-                                     Foreground="{StaticResource BrandViolet}" />
+                <Border Grid.Column="0" Style="{StaticResource GlowCard}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="CPU LOAD" Style="{StaticResource MonoLabel}" />
+                        <TextBlock x:Name="CpuValue" Text="—" Style="{StaticResource HeroNumber}" />
+                        <Grid x:Name="CpuSparkHost" Height="38">
+                            <Polygon x:Name="CpuSparkFill" Opacity="0.30" Fill="{StaticResource PulseGradient}" />
+                            <Polyline x:Name="CpuSparkLine" Stroke="{StaticResource PulseGradient}"
+                                      StrokeThickness="2" StrokeLineJoin="Round" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- RAM -->
-                <Border Grid.Column="1" Style="{StaticResource StatCard}">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="RAM" FontFamily="Consolas" FontSize="11" Opacity="0.6" />
-                        <TextBlock x:Name="RamValue" Text="—" FontSize="32" FontWeight="Bold"
-                                   Foreground="{StaticResource BrandVioletSoft}" />
-                        <ProgressBar x:Name="RamBar" Minimum="0" Maximum="100" Value="0" Height="4"
-                                     Foreground="{StaticResource BrandViolet}" />
+                <Border Grid.Column="1" Style="{StaticResource GlowCard}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="MEMORY" Style="{StaticResource MonoLabel}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock x:Name="RamValue" Text="—" Style="{StaticResource HeroNumber}" />
+                            <TextBlock x:Name="RamTotal" Text="" FontFamily="Consolas" FontSize="12"
+                                       Opacity="0.5" VerticalAlignment="Bottom" Margin="0,0,0,7" />
+                        </StackPanel>
+                        <Grid x:Name="RamSparkHost" Height="38">
+                            <Polygon x:Name="RamSparkFill" Opacity="0.30" Fill="{StaticResource VoidGradient}" />
+                            <Polyline x:Name="RamSparkLine" Stroke="{StaticResource VoidGradient}"
+                                      StrokeThickness="2" StrokeLineJoin="Round" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- Processes -->
-                <Border Grid.Column="2" Style="{StaticResource StatCard}">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="PROCESSES" FontFamily="Consolas" FontSize="11" Opacity="0.6" />
-                        <TextBlock x:Name="ProcValue" Text="—" FontSize="32" FontWeight="Bold"
+                <Border Grid.Column="2" Style="{StaticResource GlowCard}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="PROCESSES" Style="{StaticResource MonoLabel}" />
+                        <TextBlock x:Name="ProcValue" Text="—" FontSize="34" FontWeight="Bold"
                                    Foreground="{StaticResource InfoBlue}" />
-                        <TextBlock Text="running" FontSize="12" Opacity="0.55" />
+                        <TextBlock x:Name="ProcDelta" Text="running now" FontSize="12" Opacity="0.55"
+                                   VerticalAlignment="Bottom" Margin="0,14,0,0" />
                     </StackPanel>
                 </Border>
 
-                <!-- Applied tweaks -->
-                <Border Grid.Column="3" Style="{StaticResource StatCard}">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="APPLIED" FontFamily="Consolas" FontSize="11" Opacity="0.6" />
-                        <TextBlock x:Name="AppliedValue" Text="0" FontSize="32" FontWeight="Bold"
+                <!-- Applied -->
+                <Border Grid.Column="3" Style="{StaticResource GlowCard}">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="ACTIVE TWEAKS" Style="{StaticResource MonoLabel}" />
+                        <TextBlock x:Name="AppliedValue" Text="0" FontSize="34" FontWeight="Bold"
                                    Foreground="{StaticResource SafeGreen}" />
-                        <TextBlock Text="tweaks active" FontSize="12" Opacity="0.55" />
-                    </StackPanel>
-                </Border>
-
-                <!-- Health -->
-                <Border Grid.Column="4" Style="{StaticResource StatCard}">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="HEALTH" FontFamily="Consolas" FontSize="11" Opacity="0.6" />
-                        <TextBlock x:Name="HealthValue" Text="—" FontSize="32" FontWeight="Bold" />
-                        <TextBlock x:Name="HealthLabel" Text="—" FontSize="12" Opacity="0.55" />
+                        <TextBlock x:Name="AppliedOf" Text="of the catalog" FontSize="12" Opacity="0.55"
+                                   VerticalAlignment="Bottom" Margin="0,14,0,0" />
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <!-- Quick actions -->
-            <Border Style="{StaticResource StatCard}">
-                <StackPanel Spacing="16">
-                    <TextBlock Text="Quick actions" FontWeight="SemiBold" FontSize="16" />
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button x:Name="ApplySafeBtn" Click="ApplySafe_Click" Style="{ThemeResource AccentButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE945;" FontSize="14" />
-                                <TextBlock Text="Apply all SAFE tweaks" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="RevertAllBtn" Click="RevertAll_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE7A7;" FontSize="14" />
-                                <TextBlock Text="Revert all" />
-                            </StackPanel>
-                        </Button>
-                        <ProgressRing x:Name="BusyRing" IsActive="False" Width="22" Height="22" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" />
-                </StackPanel>
-            </Border>
+            <!-- ═══════════ Disks + Quick actions ═══════════ -->
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5*" />
+                    <ColumnDefinition Width="7*" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="HwLine" FontFamily="Consolas" FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
+                <!-- Disks -->
+                <Border Grid.Column="0" Style="{StaticResource VoidCard}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="STORAGE" Style="{StaticResource MonoLabel}" />
+                        <ItemsControl x:Name="DiskList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:DiskRow">
+                                    <Grid Margin="0,0,0,12" RowSpacing="5">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0">
+                                            <TextBlock Text="{x:Bind Letter}" FontFamily="Consolas" FontSize="12"
+                                                       FontWeight="Bold" HorizontalAlignment="Left" />
+                                            <TextBlock Text="{x:Bind Detail}" FontFamily="Consolas" FontSize="11"
+                                                       Opacity="0.55" HorizontalAlignment="Right" />
+                                        </Grid>
+                                        <ProgressBar Grid.Row="1" Minimum="0" Maximum="100" Value="{x:Bind Pct}"
+                                                     Height="5" Foreground="{StaticResource BrandViolet}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Quick actions -->
+                <Border Grid.Column="1" Style="{StaticResource VoidCard}">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="QUICK ACTIONS" Style="{StaticResource MonoLabel}" />
+                        <Grid ColumnSpacing="10" RowSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Button Grid.Row="0" Grid.Column="0" x:Name="ApplySafeBtn" Click="ApplySafe_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Style="{ThemeResource AccentButtonStyle}" Padding="14,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE945;" FontSize="15" />
+                                    <StackPanel>
+                                        <TextBlock Text="Apply all SAFE tweaks" FontWeight="SemiBold" />
+                                        <TextBlock Text="one-click optimization" FontSize="11" Opacity="0.7" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Row="0" Grid.Column="1" x:Name="RevertAllBtn" Click="RevertAll_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE7A7;" FontSize="15" Foreground="{StaticResource WarnAmber}" />
+                                    <StackPanel>
+                                        <TextBlock Text="Revert everything" FontWeight="SemiBold" />
+                                        <TextBlock Text="back to Windows defaults" FontSize="11" Opacity="0.6" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Row="1" Grid.Column="0" x:Name="RestorePointBtn" Click="RestorePoint_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE777;" FontSize="15" Foreground="{StaticResource InfoBlue}" />
+                                    <StackPanel>
+                                        <TextBlock Text="Create restore point" FontWeight="SemiBold" />
+                                        <TextBlock Text="safety net before tweaking" FontSize="11" Opacity="0.6" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Row="1" Grid.Column="1" x:Name="CleanTempBtn" Click="CleanTemp_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xE74D;" FontSize="15" Foreground="{StaticResource SafeGreen}" />
+                                    <StackPanel>
+                                        <TextBlock Text="Clean temp + DNS" FontWeight="SemiBold" />
+                                        <TextBlock Text="flush junk files and cache" FontSize="11" Opacity="0.6" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ProgressRing x:Name="BusyRing" IsActive="False" Width="20" Height="20" />
+                            <TextBlock x:Name="ActionHint" Text="" FontFamily="Consolas" FontSize="11" Opacity="0.5"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="True" />
+
+            <TextBlock x:Name="HwLine" FontFamily="Consolas" FontSize="11" Opacity="0.45" TextWrapping="Wrap" />
         </StackPanel>
     </ScrollViewer>
 </Page>

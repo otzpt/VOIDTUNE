@@ -391,6 +391,20 @@ public static class TweakCatalog
         new() { Id="p8", Category="Privacy", Tier=TweakTier.Extreme, Name="Disable Windows Update", Description="Stop the Windows Update service. Re-enable to get updates.",
             ApplyCmd="sc config wuauserv start= disabled & sc stop wuauserv & exit /b 0", RevertCmd="sc config wuauserv start= demand & sc start wuauserv & exit /b 0" },
 
+        // ── 0.8.8 quality additions ──────────────────────────────────────────
+        new() { Id="deb20", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Search Highlights", Description="Remove the rotating web content in the taskbar search box.",
+            ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings"" /v IsDynamicSearchBoxEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings"" /v IsDynamicSearchBoxEnabled /t REG_DWORD /d 1 /f" },
+        new() { Id="deb21", Category="Debloat", Tier=TweakTier.Safe, Name="No Startup App Delay", Description="Launch startup apps immediately instead of Windows' staggered delay.",
+            ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /f & exit /b 0" },
+        new() { Id="net20", Category="Network", Tier=TweakTier.Extreme, Name="Cloudflare DNS", Description="Use 1.1.1.1 / 1.0.0.1 — consistently among the fastest public resolvers. Revert returns to your router / DHCP DNS.",
+            ApplyCmd=@"PS:try { Get-NetAdapter -Physical | Where-Object Status -eq 'Up' | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ServerAddresses '1.1.1.1','1.0.0.1' } } catch {}; exit 0", RevertCmd=@"PS:try { Get-NetAdapter -Physical | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses } } catch {}; ipconfig /flushdns | Out-Null; exit 0" },
+        new() { Id="cpu20", Category="CPU", Tier=TweakTier.Extreme, Name="Disable Core Parking", Description="Keep all cores unparked for snappier frame pacing. Slightly higher idle power.",
+            ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 100 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 10 & powercfg -setactive scheme_current & exit /b 0" },
+        new() { Id="slim40", Category="Processes", Tier=TweakTier.Safe, Name="No Edge Preload", Description="Stop Microsoft Edge from pre-launching and running in the background when closed.",
+            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /t REG_DWORD /d 0 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /f & exit /b 0" },
+        new() { Id="stor20", Category="Storage", Tier=TweakTier.Extreme, Name="NTFS RAM Boost", Description="Let NTFS use more RAM for metadata caching (fsutil memoryusage 2). Best with 16 GB+.",
+            ApplyCmd="fsutil behavior set memoryusage 2", RevertCmd="fsutil behavior set memoryusage 1" },
+
         // ── Restore (reset to defaults — never auto-selected) ───────────────────
         new() { Id="rst1", Category="Restore", Tier=TweakTier.Safe, Name="Restore Network", Description="Reset TCP/IP global settings to defaults.",
             ApplyCmd="netsh int tcp set global autotuninglevel=normal & netsh int tcp set global ecncapability=enabled & netsh int tcp set global rsc=enabled & netsh int tcp set global congestionprovider=default & exit /b 0", RevertCmd="" },

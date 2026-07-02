@@ -29,7 +29,96 @@
             <SolidColorBrush x:Key="WarnAmber"        Color="#F59E0B" />
             <SolidColorBrush x:Key="InfoBlue"         Color="#38BDF8" />
 
-            <!-- Card styling -->
+            <!-- ===== The Void design system ===== -->
+
+            <!-- Signature gradient: violet → pink, used for hero numbers and accents -->
+            <LinearGradientBrush x:Key="VoidGradient" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#A78BFA" Offset="0" />
+                <GradientStop Color="#F472B6" Offset="1" />
+            </LinearGradientBrush>
+
+            <LinearGradientBrush x:Key="VoidGradientStrong" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#8B5CF6" Offset="0" />
+                <GradientStop Color="#EC4899" Offset="1" />
+            </LinearGradientBrush>
+
+            <!-- Cool cyan → violet, for sparklines and secondary accents -->
+            <LinearGradientBrush x:Key="PulseGradient" StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#38BDF8" Offset="0" />
+                <GradientStop Color="#A78BFA" Offset="1" />
+            </LinearGradientBrush>
+
+            <!-- Hero card backdrop: deep void with a violet nebula bloom -->
+            <LinearGradientBrush x:Key="HeroBackdrop" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#1A0B2E" Offset="0" />
+                <GradientStop Color="#140A22" Offset="0.45" />
+                <GradientStop Color="#26103F" Offset="1" />
+            </LinearGradientBrush>
+
+            <!-- Subtle top-edge highlight used on glow cards -->
+            <LinearGradientBrush x:Key="CardEdgeGlow" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#508B5CF6" Offset="0" />
+                <GradientStop Color="#148B5CF6" Offset="0.25" />
+                <GradientStop Color="#00000000" Offset="1" />
+            </LinearGradientBrush>
+
+            <!-- Standard content card -->
+            <Style x:Key="VoidCard" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="20" />
+            </Style>
+
+            <!-- Card with a faint violet aura (stat tiles, hero panels) -->
+            <Style x:Key="GlowCard" TargetType="Border">
+                <Setter Property="Background" Value="#12FFFFFF" />
+                <Setter Property="BorderBrush" Value="{StaticResource CardEdgeGlow}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="18" />
+            </Style>
+
+            <!-- Small mono caption ("SYSTEM HEALTH OVERVIEW") -->
+            <Style x:Key="MonoCaption" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Consolas" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{StaticResource BrandVioletSoft}" />
+                <Setter Property="CharacterSpacing" Value="120" />
+            </Style>
+
+            <!-- Dim mono label inside cards -->
+            <Style x:Key="MonoLabel" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Consolas" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Opacity" Value="0.55" />
+                <Setter Property="CharacterSpacing" Value="100" />
+            </Style>
+
+            <!-- Big gradient hero number -->
+            <Style x:Key="HeroNumber" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="34" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="{StaticResource VoidGradient}" />
+            </Style>
+
+            <!-- Page title -->
+            <Style x:Key="PageTitle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="30" />
+                <Setter Property="FontWeight" Value="Bold" />
+            </Style>
+
+            <!-- Chip: small rounded mono badge -->
+            <Style x:Key="Chip" TargetType="Border">
+                <Setter Property="Background" Value="#14FFFFFF" />
+                <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="9,4" />
+            </Style>
+
+            <!-- Card styling (legacy keys, still referenced) -->
             <Thickness x:Key="CardPadding">20</Thickness>
             <x:Double x:Key="CardCorner">10</x:Double>
         </ResourceDictionary>
