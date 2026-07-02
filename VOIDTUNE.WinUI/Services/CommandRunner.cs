@@ -25,7 +25,13 @@ public static class CommandRunner
             // Inline quoting breaks whenever the script itself contains double quotes (e.g. the
             // MSI-mode and write-cache tweaks), which silently corrupted those commands and made
             // them fail. EncodedCommand is quote-proof.
-            string ps = command[3..].Trim();
+            //
+            // Prefix $ProgressPreference='SilentlyContinue' so cmdlets that autoload modules
+            // (Get-CimInstance on a cold start) don't emit "Preparing modules for first use"
+            // progress records as CLIXML on stderr — that junk was being appended to stdout and
+            // corrupting any command whose output we parse as JSON (e.g. the Drivers page came
+            // back empty because the trailing CLIXML made JsonDocument.Parse throw).
+            string ps = "$ProgressPreference='SilentlyContinue'; " + command[3..].Trim();
             string b64 = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(ps));
             return RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {b64}");
         }

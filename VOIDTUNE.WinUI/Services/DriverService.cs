@@ -20,9 +20,14 @@ public static class DriverService
         var r = await CommandRunner.ExecAsync(ps);
         if (!r.Ok || string.IsNullOrWhiteSpace(r.Output)) return result;
 
+        // Defensive: slice out just the JSON payload in case any stray text (a stderr line, a
+        // BOM, a progress record) is glued onto it — a single trailing char makes Parse throw.
+        string json = ExtractJson(r.Output);
+        if (string.IsNullOrEmpty(json)) return result;
+
         try
         {
-            using var doc = JsonDocument.Parse(r.Output);
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             if (root.ValueKind == JsonValueKind.Array)
             {
@@ -53,17 +58,34 @@ public static class DriverService
     private static string Str(JsonElement el, string name)
         => el.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
 
-    private static string Categorize(string deviceClass) => deviceClass switch
+    /// <summary>Returns the substring from the first [ or { to its matching close, or "" if none.</summary>
+    private static string ExtractJson(string s)
     {
-        "Display" => "GPU",
-        "MEDIA" or "AudioEndpoint" => "Audio",
-        "Net" => "Network",
+        int start = s.IndexOfAny(new[] { '[', '{' });
+        if (start < 0) return "";
+        char open = s[start];
+        char close = open == '[' ? ']' : '}';
+        int end = s.LastIndexOf(close);
+        return end > start ? s.Substring(start, end - start + 1) : "";
+    }
+
+    // Win32_PnPSignedDriver returns DeviceClass in upper-case on many systems (DISPLAY, NET,
+    // AUDIOENDPOINT…), so match case-insensitively.
+    private static string Categorize(string deviceClass) => deviceClass.ToUpperInvariant() switch
+    {
+        "DISPLAY" => "GPU",
+        "MEDIA" or "AUDIOENDPOINT" or "AUDIOPROCESSINGOBJECT" => "Audio",
+        "NET" => "Network",
         "USB" => "USB",
-        "HDC" or "SCSIAdapter" or "DiskDrive" => "Storage",
-        "Processor" => "CPU",
-        "System" => "System",
-        "HIDClass" or "Keyboard" or "Mouse" => "Input",
-        "Bluetooth" => "Bluetooth",
+        "HDC" or "SCSIADAPTER" or "DISKDRIVE" or "VOLUME" => "Storage",
+        "PROCESSOR" => "CPU",
+        "SYSTEM" or "COMPUTER" or "FIRMWARE" or "SOFTWARECOMPONENT" or "SOFTWAREDEVICE" => "System",
+        "HIDCLASS" or "KEYBOARD" or "MOUSE" => "Input",
+        "MONITOR" => "Monitor",
+        "CAMERA" => "Camera",
+        "BLUETOOTH" => "Bluetooth",
+        "SECURITYDEVICES" => "Security",
+        "WPD" => "Portable",
         "" => "Other",
         _ => deviceClass,
     };

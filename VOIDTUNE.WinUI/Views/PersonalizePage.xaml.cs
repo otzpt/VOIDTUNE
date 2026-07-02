@@ -1,16 +1,18 @@
-using Microsoft.UI.Xaml.Controls;
-using System.Collections.Generic;
+using System;
+using System.Collections.ObjectModel;
 using System.Linq;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using VOIDTUNE.WinUI.Models;
 using VOIDTUNE.WinUI.Services;
 using Windows.UI;
-using Microsoft.UI.Xaml.Media;
 
 namespace VOIDTUNE.WinUI.Views;
 
 public sealed partial class PersonalizePage : Page
 {
-    private bool _loading;
+    /// <summary>Mod cards shown in the grid (filtered by search).</summary>
+    public ObservableCollection<PersonalizeToggle> Mods { get; } = new();
 
     public PersonalizePage()
     {
@@ -21,42 +23,50 @@ public sealed partial class PersonalizePage : Page
 
     private void Refresh()
     {
-        _loading = true;
+        // Read the live state of every mod, then (re)build the visible list.
         foreach (var t in PersonalizeService.Toggles)
             t.Enabled = PersonalizeService.GetState(t.Id);
-
-        // group by Group, preserving definition order
-        var groups = PersonalizeService.Toggles
-            .GroupBy(t => t.Group)
-            .Select(g => new GroupInfo(g.Key, g.ToList()));
-        GroupedToggles.Source = groups;
-
+        ApplyFilter();
         UpdateAccentLabel();
-        _loading = false;
     }
 
-    private void UpdateAccentLabel()
+    private void Search_Changed(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        string hex = PersonalizeService.GetCurrentAccentHex();
-        CurrentAccentLabel.Text = PersonalizeService.AccentColors.FirstOrDefault(c => string.Equals(c.Hex, hex, System.StringComparison.OrdinalIgnoreCase))?.Name ?? hex;
-        try
-        {
-            byte r = System.Convert.ToByte(hex.Substring(1, 2), 16);
-            byte g = System.Convert.ToByte(hex.Substring(3, 2), 16);
-            byte b = System.Convert.ToByte(hex.Substring(5, 2), 16);
-            CurrentSwatch.Background = new SolidColorBrush(Color.FromArgb(255, r, g, b));
-        }
-        catch { /* ignore */ }
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput) ApplyFilter();
     }
 
+    private void ApplyFilter()
+    {
+        string q = (SearchBox?.Text ?? "").Trim();
+        Mods.Clear();
+        foreach (var t in PersonalizeService.Toggles)
+        {
+            if (q.Length > 0 &&
+                t.Name.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
+                t.Description.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0 &&
+                t.Group.IndexOf(q, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            Mods.Add(t);
+        }
+        int on = PersonalizeService.Toggles.Count(t => t.Enabled);
+        CountLine.Text = $"{Mods.Count} shown · {on} on";
+    }
+
+    // Toggling a mod applies it immediately. The IsOn binding also fires Toggled when a card is
+    // (re)realized while scrolling, so we ignore events where the switch already matches state.
     private async void Toggle_Changed(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        if (_loading) return;
-        if (sender is ToggleSwitch { Tag: PersonalizeToggle t })
-        {
-            await PersonalizeService.SetAsync(t.Id, t.Enabled);
-            Show($"{t.Name}: {(t.Enabled ? "ON" : "OFF")} — some changes need Explorer restart / sign-out.", InfoBarSeverity.Success);
-        }
+        if (sender is not ToggleSwitch ts || ts.Tag is not PersonalizeToggle t) return;
+        bool on = ts.IsOn;
+        if (on == t.Enabled) return;   // echo from binding / realization — not a user action
+
+        ts.IsEnabled = false;
+        await PersonalizeService.SetAsync(t.Id, on);
+        t.Enabled = on;
+        ts.IsEnabled = true;
+
+        int cnt = PersonalizeService.Toggles.Count(x => x.Enabled);
+        CountLine.Text = $"{Mods.Count} shown · {cnt} on";
+        Show($"{t.Name}: {(on ? "ON" : "OFF")} — some changes need an Explorer restart or sign-out.", InfoBarSeverity.Success);
     }
 
     private async void Accent_Click(object sender, ItemClickEventArgs e)
@@ -69,17 +79,25 @@ public sealed partial class PersonalizePage : Page
         }
     }
 
+    private void UpdateAccentLabel()
+    {
+        string hex = PersonalizeService.GetCurrentAccentHex();
+        CurrentAccentLabel.Text = PersonalizeService.AccentColors
+            .FirstOrDefault(c => string.Equals(c.Hex, hex, StringComparison.OrdinalIgnoreCase))?.Name ?? hex;
+        try
+        {
+            byte r = Convert.ToByte(hex.Substring(1, 2), 16);
+            byte g = Convert.ToByte(hex.Substring(3, 2), 16);
+            byte b = Convert.ToByte(hex.Substring(5, 2), 16);
+            CurrentSwatch.Background = new SolidColorBrush(Color.FromArgb(255, r, g, b));
+        }
+        catch { /* ignore */ }
+    }
+
     private void Show(string msg, InfoBarSeverity sev)
     {
         StatusBar.Message = msg;
         StatusBar.Severity = sev;
         StatusBar.IsOpen = true;
-    }
-
-    /// <summary>Grouping shim for CollectionViewSource (needs a Key + items).</summary>
-    private sealed class GroupInfo : List<PersonalizeToggle>
-    {
-        public GroupInfo(string key, IEnumerable<PersonalizeToggle> items) : base(items) => Key = key;
-        public string Key { get; }
     }
 }

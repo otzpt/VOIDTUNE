@@ -16,9 +16,9 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>VOIDTUNE</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
-    <Version>0.8.6</Version>
-    <FileVersion>0.8.6.0</FileVersion>
-    <AssemblyVersion>0.8.6.0</AssemblyVersion>
+    <Version>0.8.7</Version>
+    <FileVersion>0.8.7.0</FileVersion>
+    <AssemblyVersion>0.8.7.0</AssemblyVersion>
     <Product>VOIDTUNE</Product>
     <Company>otzpt</Company>
   </PropertyGroup>

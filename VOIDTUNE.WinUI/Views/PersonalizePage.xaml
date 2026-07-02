@@ -9,11 +9,11 @@
 
     <Page.Resources>
         <conv:HexToBrushConverter x:Key="HexToBrush" />
-        <CollectionViewSource x:Name="GroupedToggles" IsSourceGrouped="True" />
     </Page.Resources>
 
-    <Grid Padding="32,28,32,0" RowSpacing="18">
+    <Grid Padding="32,28,32,0" RowSpacing="14">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -21,16 +21,16 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Spacing="3">
-            <TextBlock Text="Personalize" FontSize="30" FontWeight="Bold" />
-            <TextBlock Text="THEME · AERO · TASKBAR · ACCENT" FontFamily="Consolas" FontSize="12"
+            <TextBlock Text="Customization" FontSize="30" FontWeight="Bold" />
+            <TextBlock Text="MODS · THEME · TASKBAR · EXPLORER · ACCENT" FontFamily="Consolas" FontSize="12"
                        Foreground="{StaticResource BrandVioletSoft}" />
         </StackPanel>
 
-        <!-- Accent color picker -->
+        <!-- Accent color -->
         <Border Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                CornerRadius="10" Padding="16,14">
-            <StackPanel Spacing="10">
+                CornerRadius="10" Padding="16,12">
+            <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Text="Accent color" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Border x:Name="CurrentSwatch" Width="22" Height="22" CornerRadius="5"
@@ -38,11 +38,10 @@
                     <TextBlock x:Name="CurrentAccentLabel" VerticalAlignment="Center" Opacity="0.7"
                                FontFamily="Consolas" FontSize="12" />
                 </StackPanel>
-                <GridView x:Name="AccentGrid" SelectionMode="None" IsItemClickEnabled="True"
-                          ItemClick="Accent_Click">
+                <GridView x:Name="AccentGrid" SelectionMode="None" IsItemClickEnabled="True" ItemClick="Accent_Click">
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="svc:AccentColor">
-                            <Border Width="40" Height="40" CornerRadius="7" Margin="3"
+                            <Border Width="38" Height="38" CornerRadius="7" Margin="3"
                                     Background="{x:Bind Hex, Converter={StaticResource HexToBrush}}"
                                     BorderBrush="#22FFFFFF" BorderThickness="1" ToolTipService.ToolTip="{x:Bind Name}" />
                         </DataTemplate>
@@ -51,41 +50,60 @@
             </StackPanel>
         </Border>
 
-        <InfoBar Grid.Row="2" x:Name="StatusBar" IsOpen="False" IsClosable="True" />
+        <!-- Search -->
+        <Grid Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <AutoSuggestBox x:Name="SearchBox" Grid.Column="0" QueryIcon="Find"
+                            PlaceholderText="Search mods…" TextChanged="Search_Changed" />
+            <TextBlock x:Name="CountLine" Grid.Column="1" VerticalAlignment="Center" Opacity="0.5"
+                       FontFamily="Consolas" FontSize="11" />
+        </Grid>
 
-        <!-- Toggle groups -->
-        <ListView Grid.Row="3" x:Name="ToggleList" SelectionMode="None"
-                  ItemsSource="{x:Bind GroupedToggles.View, Mode=OneWay}">
-            <ListView.GroupStyle>
-                <GroupStyle>
-                    <GroupStyle.HeaderTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Key}" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
-                                       Foreground="{StaticResource BrandVioletSoft}" Margin="0,12,0,2" />
-                        </DataTemplate>
-                    </GroupStyle.HeaderTemplate>
-                </GroupStyle>
-            </ListView.GroupStyle>
-            <ListView.ItemTemplate>
+        <InfoBar Grid.Row="3" x:Name="StatusBar" IsOpen="False" IsClosable="True" />
+
+        <!-- Mod grid (Windhawk-style cards) -->
+        <GridView Grid.Row="4" x:Name="ModGrid" ItemsSource="{x:Bind Mods}" SelectionMode="None"
+                  Padding="0,4,0,20" ScrollViewer.HorizontalScrollMode="Disabled">
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="Margin" Value="0,0,12,12" />
+                    <Setter Property="Padding" Value="0" />
+                </Style>
+            </GridView.ItemContainerStyle>
+            <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:PersonalizeToggle">
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                            CornerRadius="8" Padding="16,10" Margin="0,4">
-                        <Grid ColumnSpacing="14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
-                                <TextBlock Text="{x:Bind Description}" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                    <Border Width="252" Height="152" CornerRadius="12"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid Padding="16,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0">
+                                <Border Width="34" Height="34" CornerRadius="9" HorizontalAlignment="Left"
+                                        Background="{x:Bind GroupHex, Converter={StaticResource HexToBrush}}">
+                                    <FontIcon Glyph="&#xE790;" FontSize="16" Foreground="#0B0B0F" />
+                                </Border>
+                                <ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="0"
+                                              OnContent="" OffContent=""
+                                              IsOn="{x:Bind Enabled, Mode=OneWay}" Tag="{x:Bind}" Toggled="Toggle_Changed" />
+                            </Grid>
+                            <StackPanel Grid.Row="1" Spacing="3" Margin="0,10,0,0">
+                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{x:Bind Description}" Opacity="0.6" FontSize="12" TextWrapping="Wrap" MaxLines="2"
+                                           TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent=""
-                                          IsOn="{x:Bind Enabled, Mode=TwoWay}" Tag="{x:Bind}" Toggled="Toggle_Changed" />
+                            <TextBlock Grid.Row="2" Text="{x:Bind Group}" FontFamily="Consolas" FontSize="9"
+                                       Foreground="{x:Bind GroupHex, Converter={StaticResource HexToBrush}}" />
                         </Grid>
                     </Border>
                 </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+            </GridView.ItemTemplate>
+        </GridView>
     </Grid>
 </Page>

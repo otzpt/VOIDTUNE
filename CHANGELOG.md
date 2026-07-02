@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.7] - 2026-07-02 (WinUI 3 edition)
+
+### Added
+- **Customization tab rebuilt** — a Windhawk-style **mod grid**: searchable cards, one-tap toggles that apply instantly, plus new mods: left-align taskbar, seconds in clock, hide Copilot / Chat, End Task on right-click, show file extensions, show hidden files, open Explorer to This PC, verbose logon.
+- **Tweaks now save & toggle live** — toggling a tweak applies (or reverts) it immediately and persists to `settings.json`. Startup **verifies actual system state**, so tweaks already applied by another optimizer or an older version show correctly.
+- **Developer mode** (Settings) — unlocks a new **DevTools** category (right after Tweaks): live system **Probe**, an elevated **Console**, and a **block-based Tweak Builder** that can submit new tweaks to GitHub for approval. Gated behind a WIP confirmation.
+
+### Changed / Removed
+- **Curated for quality over quantity.** Removed the aggressive tweaks that could cause harm: **DPC Watchdog Tune** (disabled the watchdog → system freezes), **Disable HPET** (timer instability), and **No Spectre Mitigation** (security risk). Removed the whole **Nuclear** tier (Defender/SmartScreen/UAC/Core Isolation/Firewall) — too aggressive.
+- **Privacy tab removed** — telemetry, ad-blocking, location, Cortana, activity feed and Windows-Update toggles are now normal tweaks. **Camera and microphone blocks removed** (they break Discord etc.).
+- Removed the mouse-settings tweaks; `GPU MSI Mode` is GPU-only (never touches input/USB controllers).
+
 ## [0.8.6] - 2026-07-01 (WinUI 3 edition)
 
 ### Fixed

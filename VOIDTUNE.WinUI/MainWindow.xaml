@@ -30,7 +30,7 @@
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
                         CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.6 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                    <TextBlock Text="v0.8.7 · WinUI 3" FontSize="10" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                 </Border>
             </StackPanel>
@@ -55,14 +55,18 @@
                 <muxc:NavigationViewItem Content="Tweaks" Tag="tweaks">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE9F5;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader x:Name="DevToolsHeader" Content="DEVTOOLS" Visibility="Collapsed" />
+                <muxc:NavigationViewItem x:Name="DevToolsNav" Content="DevTools" Tag="devtools" Visibility="Collapsed">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xEC7A;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="CONFIGURE" />
                 <muxc:NavigationViewItem Content="Services" Tag="services">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE950;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem Content="Startup" Tag="startup">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE7B5;" /></muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem Content="Privacy" Tag="privacy">
-                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE72E;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem Content="Personalize" Tag="personalize">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE790;" /></muxc:NavigationViewItem.Icon>

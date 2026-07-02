@@ -109,32 +109,37 @@ public sealed partial class TweaksPage : Page
     }
 
     private void UpdateCount()
-    {
-        int sel = _engine.Tweaks.Count(t => t.Selected);
-        CountLine.Text = $"{_filtered.Count} shown · {_engine.AppliedCount} applied · {sel} selected";
-    }
+        => CountLine.Text = $"{_filtered.Count} shown · {_engine.AppliedCount} applied";
 
-    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Toggling a tweak applies (on) or reverts (off) that single tweak immediately and persists it.
+    /// The TwoWay/OneWay IsOn binding also raises Toggled when a list container is (re)realized or
+    /// recycled, so we ignore any event where the switch already matches the tweak's applied state.
+    /// </summary>
+    private async void Tweak_Toggled(object sender, RoutedEventArgs e)
     {
-        foreach (var t in _filtered) t.Selected = true;
+        if (sender is not ToggleSwitch ts || ts.Tag is not Tweak t) return;
+        bool on = ts.IsOn;
+        if (on == t.Applied) return;   // echo from binding / realization / recycling — not a user click
+
+        if (on && t.Tier == TweakTier.Nuclear && !await ConfirmNuclear(1))
+        {
+            ts.IsOn = false;           // user declined — undo the visual (guard skips the echo)
+            return;
+        }
+
+        ts.IsEnabled = false;
+        var (ok, fail) = on
+            ? await _engine.ApplyAsync(new[] { t }, backup: false)   // single toggle: skip the heavy backup
+            : await _engine.RevertAsync(new[] { t });
+        ts.IsEnabled = true;
+
+        ts.IsOn = t.Applied;           // sync switch to the real result (engine already saved state)
         UpdateCount();
-    }
-
-    private void Clear_Click(object sender, RoutedEventArgs e)
-    {
-        foreach (var t in _engine.Tweaks) t.Selected = false;
-        UpdateCount();
-    }
-
-    private async void ApplySelected_Click(object sender, RoutedEventArgs e)
-    {
-        var selected = _engine.Tweaks.Where(t => t.Selected).ToList();
-        if (selected.Count == 0) { ShowStatus("Nothing selected.", InfoBarSeverity.Warning); return; }
-
-        if (selected.Any(t => t.Tier == TweakTier.Nuclear) &&
-            !await ConfirmNuclear(selected.Count(t => t.Tier == TweakTier.Nuclear))) return;
-
-        await RunApply(selected, "selected");
+        ShowStatus(fail > 0
+            ? $"{t.Name}: couldn't {(on ? "apply" : "revert")}."
+            : $"{t.Name} {(t.Applied ? "applied" : "reverted")} · saved.",
+            fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
     }
 
     private async void ApplySafe_Click(object sender, RoutedEventArgs e)

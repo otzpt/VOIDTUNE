@@ -19,6 +19,7 @@ public sealed partial class SettingsPage : Page
             ? "Install mode: installed (MSI) — updates run the installer."
             : "Install mode: portable — updates replace files in place.";
         InstallBtnText.Text = UpdateService.IsInstalled ? "Download & run installer" : "Download & install";
+        DevModeToggle.IsOn = AppSettingsStore.DevMode;
         _initialising = false;
 
         // If a startup check already found an update, surface it here.
@@ -29,6 +30,34 @@ public sealed partial class SettingsPage : Page
     {
         if (_initialising) return;
         UpdateService.AutoCheckEnabled = AutoCheckToggle.IsOn;
+    }
+
+    private async void DevMode_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_initialising) return;
+
+        if (DevModeToggle.IsOn)
+        {
+            var dlg = new ContentDialog
+            {
+                Title = "Enable Developer mode?",
+                Content = "Developer mode unlocks the DevTools category — a live system probe, an elevated " +
+                          "console, and a block-based tweak builder.\n\nThese are work-in-progress features. " +
+                          "Everything stays reversible, but expect rough edges. Continue?",
+                PrimaryButtonText = "Enable WIP features",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.XamlRoot,
+            };
+            if (await dlg.ShowAsync() == ContentDialogResult.Primary)
+                AppSettingsStore.DevMode = true;
+            else
+                DevModeToggle.IsOn = false;   // user backed out
+        }
+        else
+        {
+            AppSettingsStore.DevMode = false;
+        }
     }
 
     private async void Check_Click(object sender, RoutedEventArgs e)

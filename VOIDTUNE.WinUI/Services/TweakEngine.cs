@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using VOIDTUNE.WinUI.Models;
@@ -18,10 +19,6 @@ public sealed class TweakEngine
     public static TweakEngine Instance { get; } = new();
 
     public ObservableCollection<Tweak> Tweaks { get; } = new();
-
-    private static readonly string StateDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VOIDTUNE");
-    private static readonly string StateFile = Path.Combine(StateDir, "applied.txt");
 
     public event Action<string>? Log;
 
@@ -45,15 +42,19 @@ public sealed class TweakEngine
         Tweaks.Select(t => t.Category).Distinct();
 
     /// <summary>Apply a set of tweaks. Returns (ok, failed). Creates a registry backup first.</summary>
-    public async Task<(int ok, int fail)> ApplyAsync(IEnumerable<Tweak> tweaks, IProgress<TweakProgress>? progress = null)
+    public async Task<(int ok, int fail)> ApplyAsync(IEnumerable<Tweak> tweaks, IProgress<TweakProgress>? progress = null, bool backup = true)
     {
         var list = tweaks as IList<Tweak> ?? new List<Tweak>(tweaks);
         if (list.Count == 0) return (0, 0);
 
-        // Total == 0 tells the dialog to show an indeterminate bar for the backup phase.
-        progress?.Report(new TweakProgress("Creating registry backup…", 0, 0));
-        string backup = await BackupService.CreateAsync("apply");
-        if (!string.IsNullOrEmpty(backup)) Log?.Invoke($"Registry backup: {backup}");
+        // Bulk applies snapshot the registry first; single toggles skip it (kept snappy).
+        if (backup)
+        {
+            // Total == 0 tells the dialog to show an indeterminate bar for the backup phase.
+            progress?.Report(new TweakProgress("Creating registry backup…", 0, 0));
+            string b = await BackupService.CreateAsync("apply");
+            if (!string.IsNullOrEmpty(b)) Log?.Invoke($"Registry backup: {b}");
+        }
 
         // The commands are independent registry/power writes, so run them concurrently
         // (bounded) instead of one process at a time. The body only writes to its own
@@ -124,26 +125,29 @@ public sealed class TweakEngine
     public Task<(int ok, int fail)> RevertAllAsync()
         => RevertAsync(Tweaks.Where(t => t.Applied).ToList());
 
+    /// <summary>
+    /// Reconciles applied-tweak state at startup: the actual system state wins (so tweaks already
+    /// applied by another optimizer, an older VOIDTUNE, or a fresh install are detected), and the
+    /// saved settings.json is the fallback for tweaks we can't verify (services / powercfg / PS).
+    /// </summary>
     private void LoadState()
     {
         try
         {
-            if (!File.Exists(StateFile)) return;
-            var ids = File.ReadAllLines(StateFile).Where(l => l.Length > 0).ToHashSet();
-            foreach (var t in Tweaks) if (ids.Contains(t.Id)) t.Applied = true;
+            var saved = AppSettingsStore.AppliedTweaks.ToHashSet();
+            foreach (var t in Tweaks)
+            {
+                bool? verified = TweakVerifier.IsApplied(t);   // reads the live registry
+                t.Applied = verified ?? saved.Contains(t.Id);
+            }
+            SaveState();   // persist the reconciled truth
         }
         catch { /* ignore */ }
     }
 
-    private void SaveState()
-    {
-        try
-        {
-            Directory.CreateDirectory(StateDir);
-            File.WriteAllLines(StateFile, Tweaks.Where(t => t.Applied).Select(t => t.Id));
-        }
-        catch { /* ignore */ }
-    }
+    /// <summary>Persists applied-tweak state to settings.json so toggles survive a restart.</summary>
+    public void SaveState() =>
+        AppSettingsStore.SetAppliedTweaks(Tweaks.Where(t => t.Applied).Select(t => t.Id));
 
     private static string FirstLine(string s)
         => string.IsNullOrEmpty(s) ? "" : s.Split('\n')[0];

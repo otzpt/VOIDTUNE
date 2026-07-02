@@ -40,6 +40,16 @@ public static class PersonalizeService
         new() { Id="HideTaskView",   Group="Taskbar", Name="Hide Task View",       Description="Remove the Task View button." },
         new() { Id="CompactMode",    Group="Display", Name="Explorer Compact Mode",Description="Tighter spacing in File Explorer." },
         new() { Id="NoLoginBlur",    Group="Display", Name="No Login Blur",        Description="Disable the acrylic blur on the logon screen." },
+        // ── Windhawk-style mods ──
+        new() { Id="LeftTaskbar",    Group="Taskbar", Name="Left-align Taskbar",   Description="Move taskbar buttons to the left (Windows 11)." },
+        new() { Id="ShowSeconds",    Group="Taskbar", Name="Seconds in Clock",     Description="Show seconds on the taskbar clock." },
+        new() { Id="HideCopilot",    Group="Taskbar", Name="Hide Copilot",         Description="Remove the Copilot button from the taskbar." },
+        new() { Id="HideChat",       Group="Taskbar", Name="Hide Chat",            Description="Remove the Teams Chat button from the taskbar." },
+        new() { Id="EndTask",        Group="Taskbar", Name="End Task on Right-click", Description="Add 'End task' to the taskbar right-click menu." },
+        new() { Id="ShowExtensions", Group="Explorer",Name="Show File Extensions", Description="Always show known file extensions." },
+        new() { Id="ShowHidden",     Group="Explorer",Name="Show Hidden Files",    Description="Reveal hidden files and folders." },
+        new() { Id="ThisPC",         Group="Explorer",Name="Open to This PC",      Description="Open File Explorer to This PC instead of Home." },
+        new() { Id="VerboseLogon",   Group="Display", Name="Verbose Logon",        Description="Show detailed status messages at sign-in / shutdown." },
     };
 
     // ── State reads ──────────────────────────────────────────────────────────
@@ -63,6 +73,15 @@ public static class PersonalizeService
         "HideTaskView"   => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowTaskViewButton", 1) == 0,
         "CompactMode"    => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "UseCompactMode", 0) == 1,
         "ClearType"      => Dword(Registry.CurrentUser, @"Control Panel\Desktop", "FontSmoothingType", 0) == 2,
+        "LeftTaskbar"    => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarAl", 1) == 0,
+        "ShowSeconds"    => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowSecondsInSystemClock", 0) == 1,
+        "HideCopilot"    => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowCopilotButton", 1) == 0,
+        "HideChat"       => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarMn", 1) == 0,
+        "EndTask"        => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings", "TaskbarEndTask", 0) == 1,
+        "ShowExtensions" => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "HideFileExt", 1) == 0,
+        "ShowHidden"     => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Hidden", 2) == 1,
+        "ThisPC"         => Dword(Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LaunchTo", 2) == 1,
+        "VerboseLogon"   => Dword(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "VerboseStatus", 0) == 1,
         _ => false,
     };
 
@@ -125,6 +144,26 @@ public static class PersonalizeService
             case "ClearType":
                 await Reg(@"HKCU\Control Panel\Desktop", "FontSmoothingType", "REG_DWORD", enable ? 2 : 1);
                 await Reg(@"HKCU\Control Panel\Desktop", "FontSmoothing", "REG_DWORD", enable ? 2 : 0);
+                break;
+            case "LeftTaskbar":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarAl", "REG_DWORD", enable ? 0 : 1); break;
+            case "ShowSeconds":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowSecondsInSystemClock", "REG_DWORD", on); break;
+            case "HideCopilot":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowCopilotButton", "REG_DWORD", enable ? 0 : 1); break;
+            case "HideChat":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarMn", "REG_DWORD", enable ? 0 : 1); break;
+            case "EndTask":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings", "TaskbarEndTask", "REG_DWORD", on); break;
+            case "ShowExtensions":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "HideFileExt", "REG_DWORD", enable ? 0 : 1); break;
+            case "ShowHidden":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "Hidden", "REG_DWORD", enable ? 1 : 2); break;
+            case "ThisPC":
+                await Reg(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "LaunchTo", "REG_DWORD", enable ? 1 : 2); break;
+            case "VerboseLogon":
+                if (enable) await Reg(@"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "VerboseStatus", "REG_DWORD", 1);
+                else await RegDelete(@"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "VerboseStatus");
                 break;
         }
     }

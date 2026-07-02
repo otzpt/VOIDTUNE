@@ -49,8 +49,20 @@ public sealed partial class MainWindow : Window
 
     private void Nav_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyDevMode();
+        Services.AppSettingsStore.DevModeChanged += OnDevModeChanged;
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigate(typeof(DashboardPage), null, new EntranceNavigationTransitionInfo());
+    }
+
+    private void OnDevModeChanged() => DispatcherQueue.TryEnqueue(ApplyDevMode);
+
+    // DevTools is a WIP category, shown only when Developer mode is enabled in Settings.
+    private void ApplyDevMode()
+    {
+        var vis = Services.AppSettingsStore.DevMode ? Visibility.Visible : Visibility.Collapsed;
+        DevToolsNav.Visibility = vis;
+        DevToolsHeader.Visibility = vis;
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -69,7 +81,6 @@ public sealed partial class MainWindow : Window
                 "tweaks"      => typeof(TweaksPage),
                 "services"    => typeof(ServicesPage),
                 "startup"     => typeof(StartupPage),
-                "privacy"     => typeof(PrivacyPage),
                 "personalize" => typeof(PersonalizePage),
                 "drivers"     => typeof(DriversPage),
                 "gpu"         => typeof(GpuHealthPage),
@@ -78,6 +89,7 @@ public sealed partial class MainWindow : Window
                 "apps"        => typeof(AppsPage),
                 "backup"      => typeof(BackupPage),
                 "script"      => typeof(ScriptPage),
+                "devtools"    => typeof(DevToolsPage),
                 _             => typeof(DashboardPage),
             };
             ContentFrame.Navigate(target, tag, new DrillInNavigationTransitionInfo());
