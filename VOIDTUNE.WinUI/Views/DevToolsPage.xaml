@@ -18,14 +18,75 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Spacing="3">
-            <TextBlock Text="DevTools" FontSize="30" FontWeight="Bold" />
-            <TextBlock Text="POWER-USER DIAGNOSTICS · CONSOLE · NETWORK" FontFamily="Consolas" FontSize="12"
-                       Foreground="{StaticResource BrandVioletSoft}" />
+            <TextBlock Text="DevTools" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="PROCESSES · PROBE · CONSOLE · REG DIFF · TWEAK LAB · NETWORK · AFFINITY"
+                       Style="{StaticResource MonoCaption}" />
         </StackPanel>
 
-        <Pivot Grid.Row="1" Margin="0,6,0,0">
+        <Pivot x:Name="DevPivot" Grid.Row="1" Margin="0,6,0,0" SelectionChanged="Pivot_Changed">
 
-            <!-- ===== SYSTEM PROBE ===== -->
+            <!-- ═════════ PROCESS MONITOR ═════════ -->
+            <PivotItem Header="Processes">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                        <ToggleSwitch x:Name="ProcAutoToggle" MinWidth="0" OnContent="Live" OffContent="Paused"
+                                      IsOn="True" Toggled="ProcAuto_Toggled" />
+                        <Button Click="RefreshProcMon_Click" Content="Refresh now" />
+                        <ProgressRing x:Name="ProcMonBusy" IsActive="False" Width="18" Height="18" />
+                        <TextBlock x:Name="ProcMonStatus" VerticalAlignment="Center" Opacity="0.65"
+                                   FontFamily="Consolas" FontSize="12" Text="Top processes by system impact (CPU + memory). Live sample every 3s." />
+                    </StackPanel>
+
+                    <ListView Grid.Row="1" x:Name="ProcMonList" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:ProcMonRow">
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="8" Padding="14,10" Margin="0,3">
+                                    <Grid ColumnSpacing="14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="3*" />
+                                            <ColumnDefinition Width="64" />
+                                            <ColumnDefinition Width="78" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontFamily="Consolas" FontSize="10.5" Opacity="0.45">
+                                                <Run Text="pid " /><Run Text="{x:Bind Pid}" />
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <!-- impact bar (proportional to system impact) -->
+                                        <ProgressBar Grid.Column="1" VerticalAlignment="Center" Height="6"
+                                                     Minimum="0" Maximum="100" Value="{x:Bind Bar}"
+                                                     Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}" />
+
+                                        <TextBlock Grid.Column="2" Text="{x:Bind Cpu}" VerticalAlignment="Center"
+                                                   FontFamily="Consolas" FontSize="12.5" FontWeight="SemiBold"
+                                                   Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}"
+                                                   HorizontalAlignment="Right" />
+                                        <TextBlock Grid.Column="3" Text="{x:Bind Ram}" VerticalAlignment="Center"
+                                                   FontFamily="Consolas" FontSize="12" Opacity="0.7" HorizontalAlignment="Right" />
+
+                                        <Button Grid.Column="4" Content="End" VerticalAlignment="Center"
+                                                Tag="{x:Bind}" Click="Kill_Click" IsEnabled="{x:Bind Killable}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </PivotItem>
+
+            <!-- ═════════ SYSTEM PROBE ═════════ -->
             <PivotItem Header="Probe">
                 <Grid RowSpacing="12">
                     <Grid.RowDefinitions>
@@ -40,6 +101,7 @@
                                 <TextBlock Text="Run probe" />
                             </StackPanel>
                         </Button>
+                        <Button Click="CopyProbe_Click" Content="Copy report" />
                         <ProgressRing x:Name="ProbeBusy" IsActive="False" Width="20" Height="20" />
                         <TextBlock x:Name="ProbeSummary" VerticalAlignment="Center" Opacity="0.7"
                                    FontFamily="Consolas" FontSize="12" Text="Read-only snapshot of your current tuning state." />
@@ -77,7 +139,7 @@
                 </Grid>
             </PivotItem>
 
-            <!-- ===== CONSOLE ===== -->
+            <!-- ═════════ CONSOLE ═════════ -->
             <PivotItem Header="Console">
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions>
@@ -89,9 +151,18 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
-                        <ComboBox x:Name="ShellBox" SelectedIndex="0" MinWidth="140">
+                        <ComboBox x:Name="ShellBox" SelectedIndex="0" MinWidth="130">
                             <ComboBoxItem Content="PowerShell" />
                             <ComboBoxItem Content="cmd.exe" />
+                        </ComboBox>
+                        <ComboBox x:Name="PresetBox" MinWidth="210" PlaceholderText="Presets…"
+                                  SelectionChanged="Preset_Changed">
+                            <ComboBoxItem Content="Top 15 CPU processes" />
+                            <ComboBoxItem Content="Top 15 RAM processes" />
+                            <ComboBoxItem Content="TCP global settings" />
+                            <ComboBoxItem Content="Startup commands" />
+                            <ComboBoxItem Content="Restart Explorer" />
+                            <ComboBoxItem Content="System file check (sfc)" />
                         </ComboBox>
                         <Button x:Name="RunCmdBtn" Click="RunCmd_Click" Style="{ThemeResource AccentButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -99,6 +170,7 @@
                                 <TextBlock Text="Run (admin)" />
                             </StackPanel>
                         </Button>
+                        <Button Click="CopyOutput_Click" Content="Copy output" />
                         <Button Click="ClearConsole_Click" Content="Clear" />
                         <ProgressRing x:Name="CmdBusy" IsActive="False" Width="20" Height="20" VerticalAlignment="Center" />
                     </StackPanel>
@@ -114,8 +186,7 @@
                         </ScrollViewer>
                     </Border>
 
-                    <TextBlock Grid.Row="3" Text="LIVE APPLY / REVERT LOG" FontFamily="Consolas" FontSize="10"
-                               Foreground="{StaticResource BrandVioletSoft}" Margin="2,4,0,0" />
+                    <TextBlock Grid.Row="3" Text="LIVE APPLY / REVERT LOG" Style="{StaticResource MonoLabel}" Margin="2,4,0,0" />
                     <Border Grid.Row="4" Background="#0B0A10" CornerRadius="8" BorderThickness="1"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
                         <ScrollViewer x:Name="LogScroller" Padding="14">
@@ -127,22 +198,89 @@
                 </Grid>
             </PivotItem>
 
-            <!-- ===== REG DIFF (next increment) ===== -->
+            <!-- ═════════ REG DIFF ═════════ -->
             <PivotItem Header="Reg Diff">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" MaxWidth="480">
-                    <FontIcon Glyph="&#xE71C;" FontSize="30" Foreground="{StaticResource BrandVioletSoft}" />
-                    <TextBlock Text="Registry Diff Inspector" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                    <TextBlock TextAlignment="Center" Opacity="0.7" TextWrapping="Wrap"
-                               Text="Snapshot the registry, apply a tweak, and see the exact keys/values that changed — before/after, exportable. Landing in the next DevTools build." />
-                </StackPanel>
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="10">
+                        <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                                   Text="Find what any tweak or Windows setting really changes: snapshot a registry scope, make the change anywhere, then diff. Read-only." />
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="DiffScope" Grid.Column="0" FontFamily="Consolas"
+                                     Text="HKCU\Software\Microsoft\Windows\CurrentVersion"
+                                     PlaceholderText="HKCU\Software\… or HKLM\SYSTEM\…" />
+                            <Button x:Name="SnapABtn" Grid.Column="1" Click="SnapA_Click" Style="{ThemeResource AccentButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE722;" FontSize="13" />
+                                    <TextBlock Text="Snapshot A" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="DiffBtn" Grid.Column="2" Click="DiffNow_Click" IsEnabled="False">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE71C;" FontSize="13" />
+                                    <TextBlock Text="Diff now (B)" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="CopyDiffBtn" Grid.Column="3" Click="CopyDiff_Click" Content="Copy as reg commands" IsEnabled="False" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <ProgressRing x:Name="DiffBusy" IsActive="False" Width="18" Height="18" />
+                            <TextBlock x:Name="DiffStatus" FontFamily="Consolas" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" Text="No snapshot yet." />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <InfoBar Grid.Row="1" x:Name="DiffInfo" IsOpen="False" IsClosable="True" />
+
+                    <ListView Grid.Row="2" x:Name="DiffList" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DiffRow">
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="8" Padding="14,10" Margin="0,3">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="86" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" CornerRadius="4" Padding="0,3" VerticalAlignment="Top"
+                                                BorderThickness="1" BorderBrush="{x:Bind Hex, Converter={StaticResource HexToBrush}}">
+                                            <TextBlock Text="{x:Bind Change}" FontFamily="Consolas" FontSize="10" FontWeight="Bold"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap">
+                                                <Run Text="{x:Bind Key}" /><Run Text=" \ " /><Run Text="{x:Bind Name}" />
+                                            </TextBlock>
+                                            <TextBlock Text="{x:Bind Detail}" FontFamily="Consolas" FontSize="11.5"
+                                                       Opacity="0.65" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
             </PivotItem>
 
-            <!-- ===== TWEAK LAB — block builder ===== -->
+            <!-- ═════════ TWEAK LAB — block builder ═════════ -->
             <PivotItem Header="Tweak Lab">
                 <ScrollViewer>
                     <StackPanel Spacing="14" Padding="0,4,10,24">
                         <TextBlock TextWrapping="Wrap" Opacity="0.75"
-                                   Text="Build a tweak from blocks — no command line needed. Stack actions, preview the generated commands, then submit it to GitHub for approval." />
+                                   Text="Build a tweak from blocks — no command line needed. Stack actions, preview the commands, save it to your catalog (persists), share it as a code, or submit it to GitHub for approval." />
 
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
@@ -155,18 +293,20 @@
                             <ComboBox x:Name="LabTier" Grid.Column="2" Header="Tier" SelectedIndex="0" HorizontalAlignment="Stretch">
                                 <ComboBoxItem Content="Safe" />
                                 <ComboBoxItem Content="Extreme" />
-                                <ComboBoxItem Content="Nuclear" />
                             </ComboBox>
                         </Grid>
+                        <TextBox x:Name="LabDesc" Header="Description" PlaceholderText="What does it do, and why is it safe to revert?" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="ADD BLOCK" FontFamily="Consolas" FontSize="10" VerticalAlignment="Center"
-                                       Foreground="{StaticResource BrandVioletSoft}" />
+                            <TextBlock Text="ADD BLOCK" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
                             <Button Click="AddReg_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE74C;" FontSize="13" /><TextBlock Text="Registry" /></StackPanel>
                             </Button>
                             <Button Click="AddSvc_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE950;" FontSize="13" /><TextBlock Text="Service" /></StackPanel>
+                            </Button>
+                            <Button Click="AddTask_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE823;" FontSize="13" /><TextBlock Text="Scheduled task" /></StackPanel>
                             </Button>
                             <Button Click="AddCmd_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE756;" FontSize="13" /><TextBlock Text="Command" /></StackPanel>
@@ -206,7 +346,9 @@
 
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button Content="Preview" Click="Preview_Click" />
-                            <Button Content="Add to my tweaks" Click="SaveTweak_Click" />
+                            <Button Content="Save to my catalog" Click="SaveTweak_Click" />
+                            <Button Content="Copy share code" Click="ExportLab_Click" />
+                            <Button Content="Import code" Click="ImportLab_Click" />
                             <Button Click="Submit_Click" Style="{ThemeResource AccentButtonStyle}">
                                 <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE72D;" FontSize="13" /><TextBlock Text="Submit for approval" /></StackPanel>
                             </Button>
@@ -222,14 +364,165 @@
                 </ScrollViewer>
             </PivotItem>
 
-            <!-- ===== NETWORK (next increment) ===== -->
+            <!-- ═════════ NETWORK ═════════ -->
             <PivotItem Header="Network">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" MaxWidth="480">
-                    <FontIcon Glyph="&#xE968;" FontSize="30" Foreground="{StaticResource BrandVioletSoft}" />
-                    <TextBlock Text="Network Control" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                    <TextBlock TextAlignment="Center" Opacity="0.7" TextWrapping="Wrap"
-                               Text="Live connections, listening ports, per-app traffic and firewall rules — plus server-management hooks over an open API. Landing in the next DevTools build." />
-                </StackPanel>
+                <ScrollViewer>
+                    <StackPanel Spacing="14" Padding="0,4,10,24">
+
+                        <!-- adapters -->
+                        <Border Style="{StaticResource VoidCard}">
+                            <StackPanel Spacing="10">
+                                <Grid>
+                                    <TextBlock Text="ADAPTERS" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
+                                    <Button Content="Refresh" HorizontalAlignment="Right" Click="RefreshNet_Click" />
+                                </Grid>
+                                <ItemsControl x:Name="AdapterList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:NetAdapterRow">
+                                            <Grid Margin="0,4" ColumnSpacing="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="10" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Top" Margin="0,6,0,0"
+                                                         Fill="{x:Bind StateHex, Converter={StaticResource HexToBrush}}" />
+                                                <StackPanel Grid.Column="1" Spacing="1">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                                        <TextBlock Text="{x:Bind Detail}" FontFamily="Consolas" FontSize="11" Opacity="0.55" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{x:Bind Addresses}" FontFamily="Consolas" FontSize="11.5" Opacity="0.7" />
+                                                    <TextBlock Text="{x:Bind Dns}" FontFamily="Consolas" FontSize="11.5" Opacity="0.7" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- latency + DNS -->
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Style="{StaticResource VoidCard}">
+                                <StackPanel Spacing="10">
+                                    <Grid>
+                                        <TextBlock Text="LATENCY" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <ProgressRing x:Name="PingBusy" IsActive="False" Width="16" Height="16" />
+                                            <Button Content="Test" Click="PingTest_Click" Style="{ThemeResource AccentButtonStyle}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <ItemsControl x:Name="PingList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:PingRow">
+                                                <Grid Margin="0,3">
+                                                    <TextBlock Text="{x:Bind Target}" FontFamily="Consolas" FontSize="12" />
+                                                    <TextBlock Text="{x:Bind Result}" FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                                                               HorizontalAlignment="Right"
+                                                               Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Style="{StaticResource VoidCard}">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="DNS QUICK SWITCH" Style="{StaticResource MonoLabel}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Cloudflare 1.1.1.1" Click="DnsCf_Click" />
+                                        <Button Content="Google 8.8.8.8" Click="DnsGoogle_Click" />
+                                        <Button Content="Router / DHCP" Click="DnsReset_Click" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="DnsStatus" FontFamily="Consolas" FontSize="11.5" Opacity="0.65"
+                                               Text="Applies to all connected physical adapters. Revert any time with Router / DHCP." TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- connections -->
+                        <Border Style="{StaticResource VoidCard}">
+                            <StackPanel Spacing="10">
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="LIVE TCP CONNECTIONS" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="ConnSummary" FontFamily="Consolas" FontSize="11" Opacity="0.6" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                        <ProgressRing x:Name="ConnBusy" IsActive="False" Width="16" Height="16" />
+                                        <Button Content="Refresh" Click="RefreshConns_Click" />
+                                    </StackPanel>
+                                </Grid>
+                                <ListView x:Name="ConnList" SelectionMode="None" MaxHeight="380">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ConnRow">
+                                            <Grid ColumnSpacing="10" Margin="0,1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="170" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="110" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{x:Bind Proc}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind Local}" FontFamily="Consolas" FontSize="11.5" Opacity="0.7" />
+                                                <TextBlock Grid.Column="2" Text="{x:Bind Remote}" FontFamily="Consolas" FontSize="11.5" Opacity="0.7" />
+                                                <TextBlock Grid.Column="3" Text="{x:Bind State}" FontFamily="Consolas" FontSize="11"
+                                                           Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}" HorizontalAlignment="Right" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
+
+            <!-- ═════════ CORE AFFINITY ═════════ -->
+            <PivotItem Header="Affinity">
+                <Grid RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="10">
+                        <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                                   Text="Pin background apps (Discord, Spotify, browsers…) to your last cores so the first, fastest cores stay exclusive to your game. Resets when the process restarts." />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Refresh list" Click="RefreshProcs_Click" />
+                            <Button x:Name="PinHalfBtn" Click="PinHalf_Click" Style="{ThemeResource AccentButtonStyle}" IsEnabled="False" />
+                            <Button x:Name="PinTwoBtn" Click="PinTwo_Click" IsEnabled="False" />
+                            <Button x:Name="ResetAffBtn" Content="All cores (reset)" Click="ResetAff_Click" IsEnabled="False" />
+                            <TextBlock x:Name="AffStatus" VerticalAlignment="Center" FontFamily="Consolas" FontSize="11.5" Opacity="0.65"
+                                       Text="Select one or more processes below." />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ListView Grid.Row="1" x:Name="ProcList" SelectionMode="Extended" SelectionChanged="ProcSel_Changed">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:ProcRow">
+                                <Grid ColumnSpacing="12" Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
+                                        <Run Text="{x:Bind Name}" /><Run Text="  " /><Run Text="{x:Bind Pid}" Foreground="Gray" />
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Detail}" FontFamily="Consolas" FontSize="11.5"
+                                               Foreground="{x:Bind Hex, Converter={StaticResource HexToBrush}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
             </PivotItem>
 
         </Pivot>

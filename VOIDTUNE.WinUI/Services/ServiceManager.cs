@@ -81,8 +81,23 @@ public sealed class ServiceManager
             {
                 using var sc = new ServiceController(s.Name);
                 var status = sc.Status;
-                s.Status = status.ToString().ToUpperInvariant();
-                s.StatusHex = status == ServiceControllerStatus.Running ? "#F59E0B" : "#22C55E";
+                ServiceStartMode mode;
+                try { mode = sc.StartType; } catch { mode = ServiceStartMode.Manual; }
+                bool running = status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending;
+
+                // Show the START TYPE (what "disable" actually changes), not just the run state.
+                // A service set to Disabled can still be running until it's stopped / rebooted —
+                // surface that instead of a misleading "RUNNING".
+                if (mode == ServiceStartMode.Disabled)
+                {
+                    s.Status = running ? "DISABLED · RUNNING" : "DISABLED";
+                    s.StatusHex = running ? "#F59E0B" : "#22C55E";   // amber = will stop on reboot; green = off
+                }
+                else
+                {
+                    s.Status = running ? "RUNNING" : "STOPPED";
+                    s.StatusHex = running ? "#F59E0B" : "#9a93a8";
+                }
             }
             catch
             {
@@ -94,23 +109,52 @@ public sealed class ServiceManager
 
     public async Task SetAsync(string name, bool enable)
     {
-        if (enable)
-        {
-            await CommandRunner.ExecAsync($"sc config {name} start= demand & sc start {name} & exit /b 0");
-        }
-        else
-        {
-            await CommandRunner.ExecAsync($"sc config {name} start= disabled & sc stop {name} & exit /b 0");
-        }
+        // Set the start type with sc.exe (reliable), then change the run state via
+        // ServiceController so we can WAIT for it to actually stop/start before refreshing —
+        // sc.exe's stop/start return immediately, which is why the UI showed stale state.
+        await CommandRunner.ExecAsync($"sc config {name} start= {(enable ? "demand" : "disabled")} & exit /b 0");
+        await Task.Run(() => ChangeRunState(name, enable));
         Refresh();
+    }
+
+    private static void ChangeRunState(string name, bool enable)
+    {
+        try
+        {
+            using var sc = new ServiceController(name);
+            sc.Refresh();
+            if (enable)
+            {
+                if (sc.Status == ServiceControllerStatus.Stopped)
+                {
+                    sc.Start();
+                    sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(10));
+                }
+            }
+            else if (sc.CanStop && sc.Status != ServiceControllerStatus.Stopped)
+            {
+                sc.Stop();
+                sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(10));
+            }
+        }
+        catch
+        {
+            // Some services refuse to stop (dependents, protected, or "cannot accept control").
+            // The start-type change still took effect, so it won't run after the next reboot —
+            // Refresh() will show "DISABLED · RUNNING" to make that state honest.
+        }
     }
 
     public async Task ApplyGamingProfileAsync()
     {
-        // Each service is independent, so disable them concurrently instead of waiting on
-        // ~30 sc.exe processes one after another.
+        // Each service is independent, so disable + stop them concurrently instead of waiting
+        // on ~30 sc.exe processes one after another. ChangeRunState waits for each to stop.
         await Parallel.ForEachAsync(GamingDisable, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel },
-            async (name, _) => await CommandRunner.ExecAsync($"sc config {name} start= disabled & sc stop {name} & exit /b 0"));
+            async (name, _) =>
+            {
+                await CommandRunner.ExecAsync($"sc config {name} start= disabled & exit /b 0");
+                await Task.Run(() => ChangeRunState(name, false));
+            });
         Refresh();
     }
 
@@ -125,7 +169,11 @@ public sealed class ServiceManager
             ["CDPSvc"] = "auto", ["DPS"] = "auto", ["W32Time"] = "demand",
         };
         await Parallel.ForEachAsync(restore, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel },
-            async (kv, _) => await CommandRunner.ExecAsync($"sc config {kv.Key} start= {kv.Value} & sc start {kv.Key} & exit /b 0"));
+            async (kv, _) =>
+            {
+                await CommandRunner.ExecAsync($"sc config {kv.Key} start= {kv.Value} & exit /b 0");
+                await Task.Run(() => ChangeRunState(kv.Key, true));
+            });
         Refresh();
     }
 }

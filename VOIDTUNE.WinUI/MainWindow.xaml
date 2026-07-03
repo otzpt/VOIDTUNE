@@ -50,7 +50,7 @@
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
                         CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.8 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                    <TextBlock Text="v0.8.9 · WinUI 3" FontSize="10" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                 </Border>
             </StackPanel>
@@ -74,6 +74,9 @@
                 <muxc:NavigationViewItemHeader Content="OPTIMIZE" />
                 <muxc:NavigationViewItem Content="Tweaks" Tag="tweaks">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE9F5;" /></muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+                <muxc:NavigationViewItem Content="Restore" Tag="restore">
+                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE777;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
                 <muxc:NavigationViewItemHeader x:Name="DevToolsHeader" Content="DEVTOOLS" Visibility="Collapsed" />
@@ -146,5 +149,33 @@
                 <Frame x:Name="ContentFrame" Grid.Row="1" />
             </Grid>
         </muxc:NavigationView>
+
+        <!-- ===== Startup loading screen (reconciling tweak state) ===== -->
+        <Grid x:Name="LoadingOverlay" Grid.RowSpan="2" Background="{StaticResource HeroBackdrop}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="22">
+                <!-- diamond mark -->
+                <Grid Width="54" Height="54" HorizontalAlignment="Center">
+                    <Border Width="36" Height="36" CornerRadius="7"
+                            BorderBrush="{StaticResource BrandViolet}" BorderThickness="2.4"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border.RenderTransform>
+                            <RotateTransform Angle="45" CenterX="18" CenterY="18" />
+                        </Border.RenderTransform>
+                    </Border>
+                    <Ellipse Width="12" Height="12" Fill="{StaticResource BrandPink}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+
+                <TextBlock Text="VOIDTUNE" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"
+                           Foreground="{StaticResource VoidGradient}" CharacterSpacing="120" />
+
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                    <ProgressRing IsActive="True" Width="20" Height="20" Foreground="{StaticResource BrandVioletSoft}" />
+                    <TextBlock x:Name="LoadingStatus" Text="Looking for already-activated tweaks…"
+                               FontFamily="Consolas" FontSize="13" VerticalAlignment="Center"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

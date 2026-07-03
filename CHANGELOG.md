@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.9] - 2026-07-03 (WinUI 3 edition)
+
+### Added
+- **Auto Game Boost** (Tweaks → Gaming) — toggle once and a lightweight watcher auto-detects any fullscreen game, pins it to your fastest cores (Intel P-cores / AMD CCD-0), pushes background apps onto the rest, raises its priority and turns off EcoQoS throttling — then **restores everything the instant the game closes**. Adapts to your CPU (topology-aware) and uses only documented Windows APIs.
+- **DevTools built out** (Developer mode): a live **Process Monitor** (impact bars, CPU/RAM, End Task), a real **Registry Diff** (snapshot → change → diff, export as reg commands), a **Network** toolkit (adapters, latency test, live TCP connections, one-click Cloudflare/Google/DHCP DNS), **Console** presets, a **Core Affinity** pinner, and a **Tweak Lab** that now **persists** your creations and can export/import them as share codes.
+- **Startup loading screen** — shows "Looking for already-activated tweaks…" while it reconciles state against the live system, then "Found N active tweaks."
+- **New tweaks:** Cloudflare DNS, Disable Search Highlights, No Startup App Delay, Disable Core Parking, No Edge Preload, **Disable Windows Recall**, plus RAM-gated (NTFS RAM Boost 16 GB+, Large Paged Pool 32 GB+) and hybrid-CPU P-core bias.
+- **Restore is its own tab** with a one-click **"Fix Stutter — Restore Memory Defaults."**
+
+### Fixed
+- **Startup enable/disable toggle** no longer inverts or hits the wrong entry — switched from TwoWay to the OneWay + echo-guard pattern (TwoWay was writing back during list virtualization).
+- **Services page** now shows the **start type** (DISABLED / DISABLED · RUNNING / RUNNING / STOPPED) instead of just the run state, and **waits for the service to actually stop** before refreshing, so "Disable" reflects reality.
+- **Tweaks that reported "failed" now apply cleanly** — an outcome-based fallback verifies the real system state when a command's exit code lies, plus an optional second-method fallback per tweak.
+- **Removed base64-encoded PowerShell** (a strong antivirus/heuristic trigger) in favor of readable temp scripts — quote-proof and far less likely to be flagged.
+
+### Changed / Removed
+- Removed **No Memory Compression** (crashed a DRAM-less SSD under disk load with second-long freezes) and made hardware/OS gating comprehensive: Windows 11-only tweaks (Copilot, Widgets, Search Highlights) are hidden on Windows 10.
+
 ## [0.8.8] - 2026-07-03 (WinUI 3 edition)
 
 ### The Void redesign

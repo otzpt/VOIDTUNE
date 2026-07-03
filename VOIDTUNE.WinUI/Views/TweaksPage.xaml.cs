@@ -31,7 +31,7 @@ public sealed partial class TweaksPage : Page
         ("Background", "Background",       "\uE823", "#94A3B8"),
         ("Privacy",    "Privacy",          "\uE72E", "#E879F9"),
         ("Audio",      "Audio",            "\uE767", "#4ADE80"),
-        ("Restore",    "Restore defaults", "\uE90F", "#9CA3AF"),
+        // "Restore" is intentionally omitted \u2014 it has its own nav page (RestorePage).
     };
 
     public TweaksPage()
@@ -46,6 +46,8 @@ public sealed partial class TweaksPage : Page
             CategoryBox.Items.Add(AllCategories);
             foreach (var s in Sections.Where(s => _engine.Categories.Contains(s.Key)))
                 CategoryBox.Items.Add(s.Display);
+            foreach (var extra in ExtraCategories())
+                CategoryBox.Items.Add(extra);
             CategoryBox.SelectedIndex = 0;
             TierBox.SelectedIndex = 0;   // selection-changed fires ApplyFilter
         }
@@ -53,6 +55,15 @@ public sealed partial class TweaksPage : Page
         {
             ApplyFilter();
         }
+    }
+
+    /// <summary>Categories not in the curated list — e.g. "Custom" from the DevTools Tweak Lab.
+    /// "Restore" is excluded because it has its own nav page.</summary>
+    private List<string> ExtraCategories()
+    {
+        var known = Sections.Select(s => s.Key).ToHashSet();
+        known.Add("Restore");
+        return _engine.Categories.Where(c => !known.Contains(c)).OrderBy(c => c).ToList();
     }
 
     private void Category_Changed(object sender, SelectionChangedEventArgs e) => ApplyFilter();
@@ -91,6 +102,26 @@ public sealed partial class TweaksPage : Page
                 Glyph = s.Glyph,
                 Hex = s.Hex,
                 BgHex = "#26" + s.Hex.TrimStart('#'),
+                CountLabel = $"{items.Count} tweak{(items.Count == 1 ? "" : "s")}",
+            };
+            g.AddRange(items);
+            groups.Add(g);
+            shown += items.Count;
+        }
+
+        // Non-curated categories (Tweak Lab customs) get a section at the end.
+        foreach (var cat in ExtraCategories())
+        {
+            if (catDisplay != AllCategories && cat != catDisplay) continue;
+            var items = _engine.Tweaks.Where(t => t.Category == cat && Match(t)).ToList();
+            if (items.Count == 0) continue;
+
+            var g = new TweakGroup
+            {
+                Name = cat,
+                Glyph = "",
+                Hex = "#A78BFA",
+                BgHex = "#26A78BFA",
                 CountLabel = $"{items.Count} tweak{(items.Count == 1 ? "" : "s")}",
             };
             g.AddRange(items);

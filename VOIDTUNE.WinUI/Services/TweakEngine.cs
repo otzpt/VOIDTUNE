@@ -32,9 +32,58 @@ public sealed class TweakEngine
 
     private TweakEngine()
     {
+        // Lightweight: just load the catalog + custom tweaks. The heavy live-state
+        // reconciliation (a registry read per tweak) runs in InitializeAsync so the
+        // startup loading screen can show progress instead of freezing the UI thread.
         foreach (var t in TweakCatalog.All) Tweaks.Add(t);
-        LoadState();
+        foreach (var c in AppSettingsStore.CustomTweaks) Tweaks.Add(FromModel(c));
     }
+
+    private bool _initialized;
+
+    /// <summary>
+    /// Reconciles every tweak's applied-state against the live system on a background thread,
+    /// then resumes the auto-game-boost watcher. Safe to call more than once (no-op after the
+    /// first). Awaited by the startup loading screen. Runs before any page binds, so mutating
+    /// the tweaks' observable state off the UI thread here has no cross-thread listeners.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        try { await Task.Run(LoadState); } catch { /* corrupt reg / access — keep saved state */ }
+        try { if (AppSettingsStore.AutoGameBoost) GameWatcherService.Start(); } catch { /* never block startup */ }
+    }
+
+    /// <summary>Lets engines (game watcher etc.) write into the live DevTools log.</summary>
+    public void EmitLog(string line) => Log?.Invoke(line);
+
+    /// <summary>Adds a Tweak Lab creation to the catalog and persists it to settings.json.</summary>
+    public void AddCustomTweak(Tweak t)
+    {
+        Tweaks.Add(t);
+        AppSettingsStore.AddCustomTweak(new AppSettingsStore.CustomTweakModel
+        {
+            Id = t.Id,
+            Name = t.Name,
+            Category = t.Category,
+            Tier = (int)t.Tier,
+            Description = t.Description,
+            ApplyCmd = t.ApplyCmd,
+            RevertCmd = t.RevertCmd,
+        });
+    }
+
+    private static Tweak FromModel(AppSettingsStore.CustomTweakModel c) => new()
+    {
+        Id = c.Id,
+        Name = c.Name,
+        Category = string.IsNullOrWhiteSpace(c.Category) ? "Custom" : c.Category,
+        Tier = (TweakTier)c.Tier,
+        Description = string.IsNullOrWhiteSpace(c.Description) ? "Custom tweak built in DevTools." : c.Description,
+        ApplyCmd = c.ApplyCmd,
+        RevertCmd = c.RevertCmd,
+    };
 
     public int AppliedCount => Tweaks.Count(t => t.Applied);
 
@@ -66,7 +115,24 @@ public sealed class TweakEngine
         foreach (var (t, success, output) in results)
         {
             Log?.Invoke($"Applying: {t.Name}");
-            if (success) { t.Applied = true; ok++; Log?.Invoke($"  OK  {t.Name}"); }
+
+            // Layer 1 — outcome over exit code: netsh/sc/reg return non-zero for benign reasons.
+            // If the command "failed" but the system already shows the desired state, it's applied.
+            bool applied = success || TweakVerifier.IsApplied(t) == true;
+
+            // Layer 2 — second method: run the tweak's FallbackCmd, then re-check the real state.
+            if (!applied && !string.IsNullOrEmpty(t.FallbackCmd))
+            {
+                Log?.Invoke($"  retrying via fallback: {t.Name}");
+                var fb = await CommandRunner.ExecAsync(t.FallbackCmd);
+                applied = fb.Ok || TweakVerifier.IsApplied(t) == true;
+            }
+
+            if (applied)
+            {
+                t.Applied = true; ok++;
+                Log?.Invoke(success ? $"  OK  {t.Name}" : $"  OK (verified)  {t.Name}");
+            }
             else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
         }
         SaveState();
@@ -87,7 +153,9 @@ public sealed class TweakEngine
         foreach (var (t, success, output) in results)
         {
             Log?.Invoke($"Reverting: {t.Name}");
-            if (success) ok++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
+            // Same outcome-based fallback as apply: verified-gone beats a lying exit code.
+            bool reverted = success || TweakVerifier.IsApplied(t) == false;
+            if (reverted) ok++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
         }
         // Every requested tweak is marked reverted, even the no-op (empty RevertCmd) ones.
         foreach (var t in list) { t.Applied = false; t.Selected = false; }

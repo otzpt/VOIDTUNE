@@ -20,6 +20,20 @@ public static class AppSettingsStore
     {
         public List<string> AppliedTweaks { get; set; } = new();
         public bool DevMode { get; set; }
+        public bool AutoGameBoost { get; set; }
+        public List<CustomTweakModel> CustomTweaks { get; set; } = new();
+    }
+
+    /// <summary>A Tweak Lab creation, persisted so it survives restarts.</summary>
+    public sealed class CustomTweakModel
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "Custom";
+        public int Tier { get; set; }
+        public string Description { get; set; } = "";
+        public string ApplyCmd { get; set; } = "";
+        public string RevertCmd { get; set; } = "";
     }
 
     private static readonly Model _m = Load();
@@ -33,11 +47,32 @@ public static class AppSettingsStore
         set { if (_m.DevMode == value) return; _m.DevMode = value; Save(); DevModeChanged?.Invoke(); }
     }
 
+    /// <summary>Whether the automatic game-boost watcher is enabled (the Auto Game Boost tweak).</summary>
+    public static bool AutoGameBoost
+    {
+        get => _m.AutoGameBoost;
+        set { if (_m.AutoGameBoost == value) return; _m.AutoGameBoost = value; Save(); }
+    }
+
     public static IReadOnlyList<string> AppliedTweaks => _m.AppliedTweaks;
 
     public static void SetAppliedTweaks(IEnumerable<string> ids)
     {
         _m.AppliedTweaks = new List<string>(ids);
+        Save();
+    }
+
+    public static IReadOnlyList<CustomTweakModel> CustomTweaks => _m.CustomTweaks;
+
+    public static void AddCustomTweak(CustomTweakModel t)
+    {
+        _m.CustomTweaks.Add(t);
+        Save();
+    }
+
+    public static void RemoveCustomTweak(string id)
+    {
+        _m.CustomTweaks.RemoveAll(t => t.Id == id);
         Save();
     }
 

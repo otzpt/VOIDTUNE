@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="VOIDTUNE.WinUI.Views.RestorePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:VOIDTUNE.WinUI.Models">
+
+    <Grid Padding="32,28,32,0" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="3">
+            <TextBlock Text="Restore" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="RESET WINDOWS SUBSYSTEMS TO THEIR DEFAULTS"
+                       Style="{StaticResource MonoCaption}" />
+        </StackPanel>
+
+        <!-- big revert-everything panel -->
+        <Border Grid.Row="1" CornerRadius="14" BorderThickness="1" BorderBrush="#3DF59E0B"
+                Background="{StaticResource HeroBackdrop}" Padding="22,18">
+            <Grid ColumnSpacing="18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="Revert every applied tweak" FontSize="18" FontWeight="Bold" />
+                    <TextBlock x:Name="AppliedLine" Style="{StaticResource MonoLabel}"
+                               Text="Rolls back everything VOIDTUNE has applied to Windows defaults." TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" x:Name="RevertAllBtn" Click="RevertAll_Click" VerticalAlignment="Center"
+                        Style="{ThemeResource AccentButtonStyle}" Padding="18,12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE7A7;" FontSize="15" />
+                        <TextBlock Text="Revert all tweaks" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <InfoBar Grid.Row="2" x:Name="StatusBar" IsOpen="False" IsClosable="True" />
+
+        <!-- individual subsystem resets -->
+        <ScrollViewer Grid.Row="3">
+            <StackPanel Spacing="10" Padding="0,4,8,24">
+                <TextBlock Text="TARGETED RESETS" Style="{StaticResource MonoLabel}" />
+                <ItemsControl x:Name="ResetList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:Tweak">
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                    CornerRadius="10" Padding="16,12" Margin="0,4">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="34" Height="34" CornerRadius="9"
+                                            Background="#26F59E0B" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE777;" FontSize="15" Foreground="{StaticResource WarnAmber}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                        <TextBlock Text="{x:Bind Description}" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Content="Reset" VerticalAlignment="Center"
+                                            Tag="{x:Bind}" Click="Reset_Click" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Create restore point before big changes" Style="{StaticResource MonoLabel}" Margin="0,10,0,0" />
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        CornerRadius="10" Padding="16,12">
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="9"
+                                Background="#2638BDF8" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE777;" FontSize="15" Foreground="{StaticResource InfoBlue}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="System Restore point" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="A Windows-level safety net you can roll back to from Recovery." Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Button Grid.Column="2" x:Name="RestorePointBtn" Content="Create" VerticalAlignment="Center" Click="RestorePoint_Click" />
+                    </Grid>
+                </Border>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                    <ProgressRing x:Name="BusyRing" IsActive="False" Width="20" Height="20" />
+                    <TextBlock x:Name="HintLine" FontFamily="Consolas" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

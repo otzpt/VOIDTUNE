@@ -19,34 +19,38 @@ public static class CommandRunner
         if (string.IsNullOrWhiteSpace(command))
             return Task.FromResult(new CommandResult(true, "no-op"));
 
+        // In-app engine tweaks (e.g. "ENGINE:autoboost:on") — no process, just a dispatch.
+        if (command.StartsWith("ENGINE:", StringComparison.Ordinal))
+            return Task.FromResult(EngineTweaks.Exec(command[7..]));
+
         if (command.StartsWith("PS:", StringComparison.Ordinal))
-        {
-            // Pass the script as a base64 -EncodedCommand instead of inline -Command "...".
-            // Inline quoting breaks whenever the script itself contains double quotes (e.g. the
-            // MSI-mode and write-cache tweaks), which silently corrupted those commands and made
-            // them fail. EncodedCommand is quote-proof.
-            //
-            // Prefix $ProgressPreference='SilentlyContinue' so cmdlets that autoload modules
-            // (Get-CimInstance on a cold start) don't emit "Preparing modules for first use"
-            // progress records as CLIXML on stderr — that junk was being appended to stdout and
-            // corrupting any command whose output we parse as JSON (e.g. the Drivers page came
-            // back empty because the trailing CLIXML made JsonDocument.Parse throw).
-            string ps = "$ProgressPreference='SilentlyContinue'; " + command[3..].Trim();
-            string b64 = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(ps));
-            return RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {b64}");
-        }
+            return RunScriptAsync(command[3..].Trim(), powershell: true);
 
         return RunAsync("cmd.exe", $"/c {command}");
     }
 
-    /// <summary>Runs a multi-line script by writing it to a temp file (PowerShell .ps1 or cmd .bat).</summary>
+    /// <summary>
+    /// Runs a script by writing it to a readable temp file and executing it with -File.
+    ///
+    /// We deliberately do NOT use `powershell -EncodedCommand &lt;base64&gt;`: an app spawning
+    /// base64-encoded PowerShell is one of the strongest antivirus heuristics (MITRE T1027 /
+    /// T1059.001 — obfuscated script execution) and was getting VOIDTUNE flagged. A plain,
+    /// human-readable .ps1 run with -File is just as quote-proof (the body lives in a file, so
+    /// there's no shell-escaping to corrupt double quotes) but reads as an ordinary script.
+    /// </summary>
     public static async Task<CommandResult> RunScriptAsync(string body, bool powershell)
     {
         string ext = powershell ? ".ps1" : ".bat";
-        string file = Path.Combine(Path.GetTempPath(), $"vt_script_{Guid.NewGuid():N}{ext}");
+        string file = Path.Combine(Path.GetTempPath(), $"voidtune_{Guid.NewGuid():N}{ext}");
         try
         {
-            await File.WriteAllTextAsync(file, body);
+            if (powershell)
+                // Silence module-autoload progress (it lands on stderr as CLIXML and would
+                // corrupt any output we parse as JSON, e.g. the Drivers page).
+                body = "$ProgressPreference='SilentlyContinue'\r\n" + body;
+
+            // UTF-8 with BOM so PowerShell/cmd decode non-ASCII in the script correctly.
+            await File.WriteAllTextAsync(file, body, new System.Text.UTF8Encoding(true));
             return powershell
                 ? await RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -File \"{file}\"")
                 : await RunAsync("cmd.exe", $"/c \"{file}\"");

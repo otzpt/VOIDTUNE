@@ -22,6 +22,14 @@ public partial class Tweak : ObservableObject
     public string ApplyCmd { get; init; } = "";
     public string RevertCmd { get; init; } = "";
 
+    /// <summary>Optional alternate apply command tried only if the primary apply fails AND the
+    /// effect still isn't present (e.g. a PowerShell method when the reg/sc path is blocked).</summary>
+    public string FallbackCmd { get; init; } = "";
+
+    /// <summary>Minimum Windows build this tweak targets (0 = any). Tweaks whose feature only
+    /// exists on a newer OS are filtered out below their build — e.g. Windows 11 = 22000.</summary>
+    public int MinBuild { get; init; }
+
     [ObservableProperty] private bool _applied;
     [ObservableProperty] private bool _selected;
 

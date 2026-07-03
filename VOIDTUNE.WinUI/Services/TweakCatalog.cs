@@ -20,10 +20,15 @@ public static class TweakCatalog
 
     private static IReadOnlyList<Tweak> Build()
     {
-        var list = new List<Tweak>(Baseline);
+        int build = HardwareInfo.WinBuild;
+        // Software gate: drop tweaks whose feature only exists on a newer Windows than this one
+        // (e.g. Windows 11-only tweaks on a Windows 10 machine). Hardware gating lives in ArchTweaks().
+        var list = new List<Tweak>(Baseline.Where(t => build >= t.MinBuild));
         list.AddRange(ArchTweaks());
         return list;
     }
+
+    private const int Win11 = 22000;   // first Windows 11 build
 
     // ── Architecture-specific, gated on detected hardware ────────────────────
     private static IEnumerable<Tweak> ArchTweaks()
@@ -81,6 +86,30 @@ public static class TweakCatalog
             arch.Add(new() { Id="lx1", Category="Power", Tier=TweakTier.Safe, Name="Laptop AC Performance", Description="[LAPTOP] Maximum performance on AC power.",
                 ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 100 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 50 && powercfg -setactive scheme_current" });
         }
+
+        // RAM-gated: caching tweaks that only help (and are only safe) with plenty of memory.
+        double ram = 0;
+        try { ram = HardwareInfo.TotalRamGb; } catch { /* leave 0 → skip */ }
+        if (ram >= 16)
+        {
+            arch.Add(new() { Id="rx1", Category="Storage", Tier=TweakTier.Extreme, Name="NTFS RAM Boost", Description=$"[{ram:0} GB RAM] Let NTFS use more RAM for metadata caching (fsutil memoryusage 2) — faster file access on high-memory systems.",
+                ApplyCmd="fsutil behavior set memoryusage 2", RevertCmd="fsutil behavior set memoryusage 1" });
+        }
+        if (ram >= 32)
+        {
+            arch.Add(new() { Id="rx2", Category="Storage", Tier=TweakTier.Extreme, Name="Large NTFS Paged Pool", Description=$"[{ram:0} GB RAM] Raise the NTFS paged-pool limit so large directories and file caches stay resident. High-memory systems only.",
+                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v PoolUsageMaximum /t REG_DWORD /d 60 /f",
+                RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v PoolUsageMaximum /f & exit /b 0" });
+        }
+
+        // Hybrid-CPU-gated: only meaningful when P-cores and E-cores coexist.
+        if (VoidSchedulerService.IsHybridCpu)
+        {
+            arch.Add(new() { Id="hy1", Category="Game", Tier=TweakTier.Safe, Name="Prefer P-Cores for Foreground", Description="[HYBRID CPU] Bias the scheduler toward the performance cores for the app you're using. Pairs with Auto Game Boost.",
+                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v HeteroPolicy /t REG_DWORD /d 4 /f",
+                RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v HeteroPolicy /f & exit /b 0" });
+        }
+
         return arch;
     }
 
@@ -138,8 +167,6 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePagingExecutive /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePagingExecutive /t REG_DWORD /d 0 /f" },
         new() { Id="ram3", Category="RAM", Tier=TweakTier.Safe, Name="Clear Temp & DNS", Description="Flush temp files and the DNS cache (one-shot).",
             ApplyCmd=@"del /q /f /s ""%TEMP%\*"" 2>nul & ipconfig /flushdns & exit /b 0", RevertCmd="" },
-        new() { Id="ram4", Category="RAM", Tier=TweakTier.Extreme, Name="No Memory Compression", Description="Disable RAM compression overhead.",
-            ApplyCmd="PS:try { Disable-MMAgent -MemoryCompression } catch {}; exit 0", RevertCmd="PS:try { Enable-MMAgent -MemoryCompression } catch {}; exit 0" },
         new() { Id="ram5", Category="RAM", Tier=TweakTier.Safe, Name="No Page Combining", Description="Disable page combining, reduces memory-management overhead.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 0 /f" },
         new() { Id="ram7", Category="RAM", Tier=TweakTier.Safe, Name="Optimal Page File", Description="Auto-size the pagefile to 1.5x RAM initial / 3x RAM max.",
@@ -206,9 +233,9 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"" /v SubscribedContent-338393Enabled /t REG_DWORD /d 0 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"" /v SubscribedContent-353694Enabled /t REG_DWORD /d 0 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"" /v SubscribedContent-353696Enabled /t REG_DWORD /d 0 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement"" /v ScoobeSystemSettingEnabled /t REG_DWORD /d 0 /f & exit /b 0", RevertCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"" /v SubscribedContent-338393Enabled /t REG_DWORD /d 1 /f & exit /b 0" },
 
         // ── Processes (background-process reduction) ────────────────────────────
-        new() { Id="slim1", Category="Processes", Tier=TweakTier.Safe, Name="Disable Copilot", Description="Turn off Windows Copilot — removes its background host.",
+        new() { Id="slim1", Category="Processes", Tier=TweakTier.Safe, MinBuild=Win11, Name="Disable Copilot", Description="Turn off Windows Copilot — removes its background host. (Windows 11)",
             ApplyCmd=@"reg add ""HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot"" /v TurnOffWindowsCopilot /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"" /v TurnOffWindowsCopilot /t REG_DWORD /d 1 /f & exit /b 0", RevertCmd=@"reg delete ""HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot"" /v TurnOffWindowsCopilot /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"" /v TurnOffWindowsCopilot /f & exit /b 0" },
-        new() { Id="slim2", Category="Processes", Tier=TweakTier.Safe, Name="Disable Widgets", Description="Disable the Widgets board — stops Widgets.exe / WebExperience host.",
+        new() { Id="slim2", Category="Processes", Tier=TweakTier.Safe, MinBuild=Win11, Name="Disable Widgets", Description="Disable the Widgets board — stops Widgets.exe / WebExperience host. (Windows 11)",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Dsh"" /v AllowNewsAndInterests /t REG_DWORD /d 0 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"" /v TaskbarDa /t REG_DWORD /d 0 /f & exit /b 0", RevertCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Dsh"" /v AllowNewsAndInterests /t REG_DWORD /d 1 /f & exit /b 0" },
         new() { Id="slim3", Category="Processes", Tier=TweakTier.Safe, Name="Edge Background Off", Description="Disable Edge startup boost and background mode — no idle msedge.exe.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /t REG_DWORD /d 0 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f & exit /b 0", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /f & exit /b 0" },
@@ -316,6 +343,8 @@ public static class TweakCatalog
             ApplyCmd="fsutil behavior set disable8dot3 1", RevertCmd="fsutil behavior set disable8dot3 0" },
 
         // ── Game ──────────────────────────────────────────────────────────────
+        new() { Id="gm0", Category="Game", Tier=TweakTier.Safe, Name="Auto Game Boost", Description="Automatically detects when a fullscreen game is running and pins it to your fastest cores (Intel P-cores / AMD CCD-0), pushes Discord/browsers/background apps onto the rest, raises the game's priority and turns off power throttling. Everything restores instantly when the game closes. No per-game setup.",
+            ApplyCmd="ENGINE:autoboost:on", RevertCmd="ENGINE:autoboost:off" },
         new() { Id="gm1", Category="Game", Tier=TweakTier.Safe, Name="Game Mode", Description="Enable Windows Game Mode.",
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\GameBar"" /v AllowAutoGameMode /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKCU\Software\Microsoft\GameBar"" /v AllowAutoGameMode /t REG_DWORD /d 0 /f" },
         new() { Id="gm2", Category="Game", Tier=TweakTier.Safe, Name="MMCSS Games = High", Description="High scheduling category for game tasks.",
@@ -392,7 +421,7 @@ public static class TweakCatalog
             ApplyCmd="sc config wuauserv start= disabled & sc stop wuauserv & exit /b 0", RevertCmd="sc config wuauserv start= demand & sc start wuauserv & exit /b 0" },
 
         // ── 0.8.8 quality additions ──────────────────────────────────────────
-        new() { Id="deb20", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Search Highlights", Description="Remove the rotating web content in the taskbar search box.",
+        new() { Id="deb20", Category="Debloat", Tier=TweakTier.Safe, MinBuild=Win11, Name="Disable Search Highlights", Description="Remove the rotating web content in the taskbar search box. (Windows 11)",
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings"" /v IsDynamicSearchBoxEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\SearchSettings"" /v IsDynamicSearchBoxEnabled /t REG_DWORD /d 1 /f" },
         new() { Id="deb21", Category="Debloat", Tier=TweakTier.Safe, Name="No Startup App Delay", Description="Launch startup apps immediately instead of Windows' staggered delay.",
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /f & exit /b 0" },
@@ -402,8 +431,8 @@ public static class TweakCatalog
             ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 100 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 10 & powercfg -setactive scheme_current & exit /b 0" },
         new() { Id="slim40", Category="Processes", Tier=TweakTier.Safe, Name="No Edge Preload", Description="Stop Microsoft Edge from pre-launching and running in the background when closed.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /t REG_DWORD /d 0 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /f & exit /b 0" },
-        new() { Id="stor20", Category="Storage", Tier=TweakTier.Extreme, Name="NTFS RAM Boost", Description="Let NTFS use more RAM for metadata caching (fsutil memoryusage 2). Best with 16 GB+.",
-            ApplyCmd="fsutil behavior set memoryusage 2", RevertCmd="fsutil behavior set memoryusage 1" },
+        new() { Id="deb22", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Windows Recall", Description="Turn off Windows Recall / AI screen-snapshotting (Copilot+ PCs) and its background data analysis. Frees NPU/CPU cycles and disk; harmless on PCs that don't have it.",
+            ApplyCmd=@"reg add ""HKCU\Software\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /t REG_DWORD /d 1 /f & exit /b 0", RevertCmd=@"reg delete ""HKCU\Software\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /f & exit /b 0" },
 
         // ── Restore (reset to defaults — never auto-selected) ───────────────────
         new() { Id="rst1", Category="Restore", Tier=TweakTier.Safe, Name="Restore Network", Description="Reset TCP/IP global settings to defaults.",
@@ -414,6 +443,11 @@ public static class TweakCatalog
             ApplyCmd="sc config SysMain start= auto & sc start SysMain & sc config DiagTrack start= auto & sc start DiagTrack & exit /b 0", RevertCmd="" },
         new() { Id="rst4", Category="Restore", Tier=TweakTier.Safe, Name="Restore Visual FX", Description="Re-enable Windows animations and effects.",
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"" /v VisualFXSetting /t REG_DWORD /d 0 /f", RevertCmd="" },
+        new() { Id="rst5", Category="Restore", Tier=TweakTier.Safe, Name="Fix Stutter — Restore Memory Defaults", Description="Undoes the memory tweaks that stall a DRAM-less SSD under disk load: re-enables RAM compression, resets NTFS memory usage, re-enables page combining, and clears any leftover DPC-watchdog override. Use this if games/audio freeze for a few seconds during big file transfers or Windows Update.",
+            ApplyCmd="PS:try { Enable-MMAgent -MemoryCompression -EA SilentlyContinue } catch {}; fsutil behavior set memoryusage 1 | Out-Null; " +
+                     @"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 0 /f | Out-Null; " +
+                     @"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel"" /v DPCTimeout /f 2>$null | Out-Null; " +
+                     @"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v LargeSystemCache /f 2>$null | Out-Null; exit 0", RevertCmd="" },
 
     };
 }

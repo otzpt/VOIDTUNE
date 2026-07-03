@@ -47,12 +47,45 @@ public sealed partial class MainWindow : Window
         Nav.SelectedItem = Nav.SettingsItem;   // routes to SettingsPage, which shows the update card
     }
 
-    private void Nav_Loaded(object sender, RoutedEventArgs e)
+    private async void Nav_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyDevMode();
         Services.AppSettingsStore.DevModeChanged += OnDevModeChanged;
+
+        // Reconcile applied-tweak state against the live system behind the loading screen.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        await TweakEngine.Instance.InitializeAsync();
+        int active = TweakEngine.Instance.AppliedCount;
+        LoadingStatus.Text = $"Found {active} active tweak{(active == 1 ? "" : "s")}.";
+
+        // Let that result read for a beat (and avoid a jarring flash on very fast machines).
+        int shown = (int)sw.ElapsedMilliseconds;
+        if (shown < 900) await System.Threading.Tasks.Task.Delay(900 - shown);
+
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigate(typeof(DashboardPage), null, new EntranceNavigationTransitionInfo());
+
+        await HideLoadingOverlayAsync();
+    }
+
+    // Fades the startup loading screen out, then collapses it so it can't catch input.
+    private async System.Threading.Tasks.Task HideLoadingOverlayAsync()
+    {
+        var fade = new DoubleAnimation
+        {
+            To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(320)),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(fade, LoadingOverlay);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+        var sb = new Storyboard();
+        sb.Children.Add(fade);
+        var tcs = new System.Threading.Tasks.TaskCompletionSource();
+        sb.Completed += (_, _) => tcs.SetResult();
+        sb.Begin();
+        await tcs.Task;
+        LoadingOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void OnDevModeChanged() => DispatcherQueue.TryEnqueue(ApplyDevMode);
@@ -79,6 +112,7 @@ public sealed partial class MainWindow : Window
             {
                 "dash"        => typeof(DashboardPage),
                 "tweaks"      => typeof(TweaksPage),
+                "restore"     => typeof(RestorePage),
                 "services"    => typeof(ServicesPage),
                 "startup"     => typeof(StartupPage),
                 "personalize" => typeof(PersonalizePage),

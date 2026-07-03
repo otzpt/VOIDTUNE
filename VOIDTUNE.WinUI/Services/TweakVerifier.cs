@@ -24,7 +24,13 @@ public static class TweakVerifier
     public static bool? IsApplied(Tweak t)
     {
         string cmd = t.ApplyCmd;
-        if (string.IsNullOrWhiteSpace(cmd) || cmd.StartsWith("PS:", StringComparison.Ordinal)) return null;
+        if (string.IsNullOrWhiteSpace(cmd)) return null;
+
+        // Engine tweaks verify from their persisted flag, not the registry.
+        if (cmd.StartsWith("ENGINE:autoboost", StringComparison.Ordinal))
+            return AppSettingsStore.AutoGameBoost;
+
+        if (cmd.StartsWith("PS:", StringComparison.Ordinal)) return null;
 
         var add = RegAdd.Match(cmd);
         if (add.Success)

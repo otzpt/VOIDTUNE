@@ -29,20 +29,21 @@ public sealed partial class StartupPage : Page
     private void Toggle_Changed(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
-        if (sender is ToggleSwitch { Tag: StartupItem it })
-        {
-            // The TwoWay IsOn binding also raises Toggled when a container is (re)realized,
-            // not just on user clicks. Only act when the value actually changed from the last
-            // committed state — otherwise scrolling/rebuilds would re-toggle entries in a loop.
-            if (it.Enabled == it.Committed) return;
+        if (sender is not ToggleSwitch ts || ts.Tag is not StartupItem it) return;
 
-            bool enable = it.Enabled;
-            it.Committed = enable;
-            _mgr.SetEnabled(it, enable);   // updates the item in place; does NOT rebuild the list
+        // IsOn is bound OneWay, so the switch's value reflects a real user flip here; the model
+        // (it.Enabled) still holds the previous state. When they already match, this Toggled came
+        // from binding/container realization during scroll — ignore it. Same guard the Tweaks page
+        // uses; TwoWay binding is what made this toggle behave inverted/randomly before.
+        bool on = ts.IsOn;
+        if (on == it.Enabled) return;
 
-            StatusBar.Message = $"{it.Name}: {(enable ? "enabled" : "disabled")} at startup.";
-            StatusBar.Severity = InfoBarSeverity.Success;
-            StatusBar.IsOpen = true;
-        }
+        _mgr.SetEnabled(it, on);   // apply to registry/folder, updates the item's label in place
+        it.Enabled = on;           // sync the model; the OneWay binding re-reads it without looping
+        it.Committed = on;
+
+        StatusBar.Message = $"{it.Name}: {(on ? "enabled" : "disabled")} at startup.";
+        StatusBar.Severity = InfoBarSeverity.Success;
+        StatusBar.IsOpen = true;
     }
 }
