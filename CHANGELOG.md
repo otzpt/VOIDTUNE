@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.8.10] - 2026-07-04 (WinUI 3 edition)
+
+### The quality-over-quantity pass
+Every tweak now has to earn its place against one rule: **FPS, UX, fewer processes, less RAM — without touching stability.** Since most users just hit "apply everything," everything in that set has to be incapable of hurting them.
+
+### Removed (harmful or placebo)
+- **Harmful:** No Memory Compression, Large System Cache, Force All Cores / Disable Core Parking, No GPU Preemption, Max GPU Clocks, Intel/AMD C-state disables — all of which lower FPS/boost headroom or risk stability.
+- **13 placebo tweaks**, mostly Network: Nagle off, TCP Fast Open, the "20% QoS reserve" myth, TIME_WAIT, max ports, ECN off, CTCP (dead on modern Windows), dubious VSync-latency keys, page combining. None of it affects a UDP game. Network tweaks: 15 → 5.
+- **4 tweaks that increase RAM for negligible FPS**: Disable Paging Executive, NTFS RAM Boost, Large Paged Pool.
+
+### Changed
+- **Hardware GPU Scheduling (HAGS)** and **GPU MSI Mode** demoted from SAFE to EXTREME (opt-in) — both are coin-flips that help some systems and stutter others, so they no longer land in the set everyone applies blindly.
+- **Auto Game Boost no longer restricts core affinity** — hard-pinning a game to a core subset could hurt 1% lows and even starved the game's own helper processes (browser/overlay) in edge cases. It's now priority + EcoQoS-off only, with all cores available to the game.
+
+### Added
+- **Real process-reducers:** Group svchost processes (merges ~50 split hosts into ~10 — the single biggest process-count cut in the catalog), Disable Telemetry Tasks, Disable Background Apps, Disable Consumer Features, Block Driver Updates in Windows Update (stops it silently overwriting your GPU driver), Faster Shutdown & App Kill, Disable Error Reporting, and a **"Remove Promoted Junk"** catch-all (Candy Crush and the rest of the King games, Disney+, TikTok, Spotify stub, Solitaire, and more) — future-proof against Windows re-installing them after updates.
+- **"Full Reset to Windows Defaults"** (Restore tab) — resets power/timers/GPU-scheduling/memory/network to stock, including tweaks that were removed from the catalog and can no longer be toggled off individually.
+- **Reboot prompt** after applying reboot-gated tweaks (GPU scheduling, MSI mode, timers) — running half-applied was causing transient stutter.
+- **Blocks / Code mode toggle** in the Tweak Lab — switch between the visual block builder and raw apply/revert commands.
+
+### Fixed
+- **"VOIDTUNE opens a random folder at login"** — the disabled-startup stash lived *inside* the Startup folder, and Windows opens any folder placed there at login. Moved the stash to LocalAppData; the app now also auto-cleans legacy stash folders from both the per-user and all-users Startup on its own.
+
+Net: ~170 → ~152 tweaks. Every survivor has a defensible reason to exist.
+
 ## [0.8.9] - 2026-07-03 (WinUI 3 edition)
 
 ### Added

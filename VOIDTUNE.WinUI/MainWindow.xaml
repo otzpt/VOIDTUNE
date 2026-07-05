@@ -11,20 +11,31 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ===== Ambient void: faint nebula glow over the Mica backdrop ===== -->
+        <!-- ===== Ambient galaxy: layered nebula glows over the Mica backdrop ===== -->
         <Grid Grid.RowSpan="2" IsHitTestVisible="False">
+            <!-- violet bloom, top-left -->
             <Rectangle>
                 <Rectangle.Fill>
-                    <RadialGradientBrush Center="0.12,0.05" RadiusX="0.75" RadiusY="0.75">
-                        <GradientStop Color="#178B5CF6" Offset="0" />
+                    <RadialGradientBrush Center="0.1,0.02" RadiusX="0.8" RadiusY="0.85">
+                        <GradientStop Color="#1F8B5CF6" Offset="0" />
                         <GradientStop Color="#00000000" Offset="1" />
                     </RadialGradientBrush>
                 </Rectangle.Fill>
             </Rectangle>
+            <!-- magenta bloom, bottom-right -->
             <Rectangle>
                 <Rectangle.Fill>
-                    <RadialGradientBrush Center="0.95,1.0" RadiusX="0.8" RadiusY="0.8">
-                        <GradientStop Color="#12F472B6" Offset="0" />
+                    <RadialGradientBrush Center="0.96,1.0" RadiusX="0.85" RadiusY="0.9">
+                        <GradientStop Color="#16EC4899" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <!-- distant cyan star-cloud, center-right (galaxy depth) -->
+            <Rectangle>
+                <Rectangle.Fill>
+                    <RadialGradientBrush Center="0.72,0.32" RadiusX="0.5" RadiusY="0.5">
+                        <GradientStop Color="#0D38BDF8" Offset="0" />
                         <GradientStop Color="#00000000" Offset="1" />
                     </RadialGradientBrush>
                 </Rectangle.Fill>
@@ -50,7 +61,7 @@
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
                         CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.9 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                    <TextBlock Text="v0.8.10 · WinUI 3" FontSize="10" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                 </Border>
             </StackPanel>

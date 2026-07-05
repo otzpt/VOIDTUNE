@@ -1,10 +1,10 @@
-# VOIDTUNE v0.8.9
+# VOIDTUNE v0.8.10
 
 **Windows optimization suite for gamers and power users.**
 
 | Version | License | Platform | Current edition |
 |---------|---------|----------|-----------------|
-| 0.8.9 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
+| 0.8.10 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
 
 🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
@@ -14,6 +14,17 @@
 
 - **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~150 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
 - **PowerShell + WPF (original)** — the original ps2exe edition at the repo root (`VOIDTUNE.ps1`, `core/`, `modules/`, `ui/`). Still functional; superseded by the WinUI app.
+
+## 🚀 What's New in v0.8.10 (WinUI 3 edition)
+
+- **Quality over quantity pass** — every tweak now has to earn its place against one rule: FPS, UX, fewer processes, less RAM, without touching stability
+- **Removed harmful & placebo tweaks** — cut ~27 tweaks that either hurt performance/stability (Force All Cores, GPU Preemption off, C-state disables) or did nothing measurable (most Network tweaks are TCP-only and don't touch UDP game traffic)
+- **HAGS + GPU MSI Mode demoted to opt-in** — both are coin-flips that help some systems and stutter others, so they're no longer in the set everyone applies blindly
+- **New real process-reducers** — Group svchost processes (the single biggest process-count cut in the catalog), Disable Telemetry Tasks, Disable Background Apps, **"Remove Promoted Junk"** (Candy Crush and friends), Block Driver Updates in Windows Update, Faster Shutdown
+- **"Full Reset to Windows Defaults"** in the Restore tab, plus a reboot prompt after reboot-gated tweaks
+- **Fixed** — VOIDTUNE no longer opens a random folder at Windows login
+
+> Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## 🚀 What's New in v0.8.9 (WinUI 3 edition)
 

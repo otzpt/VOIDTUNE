@@ -299,7 +299,31 @@ public sealed partial class DevToolsPage : Page
     private void UpdateBlockEmpty()
         => BlockEmpty.Visibility = Blocks.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
+    // ── Blocks / Code mode ───────────────────────────────────────────────────
+    private void CodeMode_Toggled(object sender, RoutedEventArgs e)
+    {
+        bool code = CodeModeToggle.IsOn;
+        BlocksPanel.Visibility = code ? Visibility.Collapsed : Visibility.Visible;
+        CodePanel.Visibility = code ? Visibility.Visible : Visibility.Collapsed;
+        ModeHint.Text = code
+            ? "Raw commands — full control (cmd.exe, or prefix PS: for PowerShell)."
+            : "Visual blocks — no command line needed.";
+    }
+
+    private void LoadCodeFromBlocks_Click(object sender, RoutedEventArgs e)
+    {
+        var (apply, revert) = ComposeFromBlocks();
+        CodeApply.Text = apply;
+        CodeRevert.Text = revert;
+    }
+
+    /// <summary>Apply/revert from whichever builder mode is active.</summary>
     private (string apply, string revert) Compose()
+        => CodeModeToggle.IsOn
+            ? (CodeApply.Text.Trim(), CodeRevert.Text.Trim())
+            : ComposeFromBlocks();
+
+    private (string apply, string revert) ComposeFromBlocks()
     {
         var applies = new List<string>();
         var reverts = new List<string>();

@@ -196,7 +196,11 @@ public sealed class VoidSchedulerService
         try
         {
             Remember(game);
-            if (topo.PerfMask != 0) game.ProcessorAffinity = (IntPtr)(long)topo.PerfMask;
+            // Deliberately DON'T restrict the game's affinity. Hard-pinning a game to a subset
+            // of cores (P-cores / a single CCD) can tank 1% lows on multi-threaded titles and is
+            // the classic "stutters after tweaks" cause. The safe, always-positive boost is:
+            // High priority + no EcoQoS throttling, and moving *background* apps off the fast
+            // cores so they can't contend. The game keeps every core available to it.
             TrySetPriority(game, ProcessPriorityClass.High);
             SetHighQoS(game.Handle, disableThrottle: true);
         }
@@ -209,11 +213,8 @@ public sealed class VoidSchedulerService
         BoostedGameName = name;
         BoostedGamePid = pid;
 
-        string where = topo.PerfMask == FullMask(topo) ? "high priority + EcoQoS off"
-                     : topo.Kind == "AMD multi-CCD" ? "locked to CCD-0, High priority, EcoQoS off"
-                     : "pinned to performance cores, High priority, EcoQoS off";
-        string bg = pushed > 0 ? $" · {pushed} background app{Plural(pushed)} moved off the fast cores" : "";
-        return (true, $"Boosted {name} — {where}{bg}. Reverts on 'Restore' or when the game exits.");
+        string bg = pushed > 0 ? $"{pushed} background app{Plural(pushed)} moved off the fast cores, " : "";
+        return (true, $"Boosted {name} — {bg}High priority + EcoQoS off, all cores available to the game. Reverts when it exits.");
     }
 
     private int PushBackground(int excludePid, nuint bgMask)

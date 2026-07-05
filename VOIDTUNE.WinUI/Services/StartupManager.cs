@@ -14,13 +14,19 @@ public sealed class StartupManager
 {
     private const string RunPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string BackupPath = @"Software\VOIDTUNE\StartupDisabled";
-    private const string DisabledFolderName = "VOIDTUNE_Disabled";
+
+    // Disabled Startup-folder shortcuts are stashed HERE, in LocalAppData — NOT inside the
+    // Startup folder. Windows opens any *folder* placed in Startup as an Explorer window at
+    // login, so an in-Startup stash folder popped open every boot. This lives outside it.
+    private static readonly string StashDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VOIDTUNE", "StartupDisabled");
 
     public ObservableCollection<StartupItem> Items { get; } = new();
 
     public void Refresh()
     {
         Items.Clear();
+        MigrateOldStashFolders();   // clean up any legacy VOIDTUNE_Disabled folder inside Startup
 
         // Enabled registry entries
         ReadRunKey(Registry.CurrentUser, "HKCU", true);
@@ -32,6 +38,7 @@ public sealed class StartupManager
         // Startup folders
         ReadFolder(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "Folder (user)");
         ReadFolder(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup), "Folder (all users)");
+        ReadDisabledFolderItems();   // disabled folder shortcuts, stashed outside Startup
     }
 
     private void ReadRunKey(RegistryKey root, string scope, bool enabled)
@@ -84,36 +91,71 @@ public sealed class StartupManager
     {
         try
         {
-            if (Directory.Exists(folder))
+            if (!Directory.Exists(folder)) return;
+            foreach (var f in Directory.GetFiles(folder))
             {
-                foreach (var f in Directory.GetFiles(folder))
+                Items.Add(new StartupItem
                 {
-                    Items.Add(new StartupItem
-                    {
-                        Name = Path.GetFileNameWithoutExtension(f),
-                        Command = f,
-                        Location = label,
-                        Scope = "Folder:" + folder,
-                        Enabled = true,
-                        Committed = true,
-                    });
-                }
+                    Name = Path.GetFileNameWithoutExtension(f),
+                    Command = f,
+                    Location = label,
+                    Scope = "Folder:" + folder,
+                    Enabled = true,
+                    Committed = true,
+                });
             }
-            string disabled = Path.Combine(folder, DisabledFolderName);
-            if (Directory.Exists(disabled))
+        }
+        catch { /* ignore */ }
+    }
+
+    // Older builds stashed disabled shortcuts in a "VOIDTUNE_Disabled" folder *inside* Startup,
+    // which Windows opened as an Explorer window at every login. Move any leftovers out to the
+    // proper stash and delete those folders (runs elevated, so it can fix the all-users Startup).
+    private void MigrateOldStashFolders()
+    {
+        const string legacyName = "VOIDTUNE_Disabled";
+        foreach (var startup in new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup),
+        })
+        {
+            try
             {
-                foreach (var f in Directory.GetFiles(disabled))
+                string legacy = Path.Combine(startup, legacyName);
+                if (!Directory.Exists(legacy)) continue;
+                Directory.CreateDirectory(StashDir);
+                foreach (var f in Directory.GetFiles(legacy))
                 {
-                    Items.Add(new StartupItem
-                    {
-                        Name = Path.GetFileNameWithoutExtension(f),
-                        Command = f,
-                        Location = label + " (disabled)",
-                        Scope = "Folder:" + folder,
-                        Enabled = false,
-                        Committed = false,
-                    });
+                    if (Path.GetFileName(f).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                    try { File.Move(f, Path.Combine(StashDir, Path.GetFileName(f)), true); } catch { }
                 }
+                try { Directory.Delete(legacy, true); } catch { /* files in use / perms */ }
+            }
+            catch { /* ignore */ }
+        }
+    }
+
+    // Disabled Startup-folder shortcuts, stashed in LocalAppData (outside the Startup folder).
+    // Re-enabling drops them back into the user's Startup folder.
+    private void ReadDisabledFolderItems()
+    {
+        try
+        {
+            if (!Directory.Exists(StashDir)) return;
+            string userStartup = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            foreach (var f in Directory.GetFiles(StashDir))
+            {
+                if (Path.GetFileName(f).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                Items.Add(new StartupItem
+                {
+                    Name = Path.GetFileNameWithoutExtension(f),
+                    Command = f,
+                    Location = "Startup folder (disabled)",
+                    Scope = "Folder:" + userStartup,
+                    Enabled = false,
+                    Committed = false,
+                });
             }
         }
         catch { /* ignore */ }
@@ -168,10 +210,10 @@ public sealed class StartupManager
         try
         {
             string folder = item.Scope.Substring("Folder:".Length);
-            string disabledDir = Path.Combine(folder, DisabledFolderName);
-            Directory.CreateDirectory(disabledDir);
+            Directory.CreateDirectory(StashDir);
             string fileName = Path.GetFileName(item.Command);
-            string dest = enable ? Path.Combine(folder, fileName) : Path.Combine(disabledDir, fileName);
+            // enable → back into the Startup folder; disable → into the external stash.
+            string dest = enable ? Path.Combine(folder, fileName) : Path.Combine(StashDir, fileName);
             if (File.Exists(item.Command)) File.Move(item.Command, dest, true);
             item.Command = dest;   // keep the path current so a later re-toggle finds the file
         }

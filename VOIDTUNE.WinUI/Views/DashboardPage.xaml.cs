@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using VOIDTUNE.WinUI.Models;
 using VOIDTUNE.WinUI.Services;
 using Windows.Foundation;
@@ -163,39 +164,96 @@ public sealed partial class DashboardPage : Page
         _starsBuilt = true;
 
         double w = StarCanvas.ActualWidth, h = StarCanvas.ActualHeight;
-        for (int i = 0; i < 54; i++)
+
+        // 1) Nebula blooms — big soft colored clouds that slowly breathe + drift. Added first
+        //    so they sit behind the stars. This is what makes the galaxy read as deep, not flat.
+        AddNebula(w * 0.14, h * 0.16, 300, Color.FromArgb(0x00, 0x8B, 0x5C, 0xF6), 0x52); // violet
+        AddNebula(w * 0.82, h * 0.78, 340, Color.FromArgb(0x00, 0xEC, 0x48, 0x99), 0x3E); // magenta
+        AddNebula(w * 0.62, h * 0.30, 240, Color.FromArgb(0x00, 0x38, 0xBD, 0xF8), 0x30); // cyan
+
+        // 2) Starfield — mostly faint, a few bright glowing anchors.
+        for (int i = 0; i < 96; i++)
         {
-            double size = _rng.NextDouble() * 1.8 + 0.8;
-            bool tinted = _rng.NextDouble() < 0.35;
-            var star = new Ellipse
+            bool bright = _rng.NextDouble() < 0.14;
+            double size = bright ? _rng.NextDouble() * 1.6 + 2.4 : _rng.NextDouble() * 1.7 + 0.6;
+            double roll = _rng.NextDouble();
+            Color c = roll < 0.30 ? Color.FromArgb(255, 0xC4, 0xB5, 0xFD)   // violet
+                    : roll < 0.46 ? Color.FromArgb(255, 0x7D, 0xD3, 0xFC)   // cyan
+                                  : Color.FromArgb(255, 0xF5, 0xF3, 0xFF);  // white
+            var star = new Ellipse { Width = size, Height = size, Fill = new SolidColorBrush(c) };
+            double peak = bright ? _rng.NextDouble() * 0.35 + 0.6 : _rng.NextDouble() * 0.5 + 0.15;
+            star.Opacity = peak;
+
+            // bright stars get a soft glow halo behind them
+            if (bright)
             {
-                Width = size,
-                Height = size,
-                Fill = new SolidColorBrush(tinted
-                    ? Color.FromArgb(255, 0xA7, 0x8B, 0xFA)
-                    : Color.FromArgb(255, 0xE9, 0xE4, 0xF7)),
-                Opacity = _rng.NextDouble() * 0.5 + 0.15,
-            };
+                var glow = new Ellipse
+                {
+                    Width = size * 4.5,
+                    Height = size * 4.5,
+                    Fill = RadialFill(Color.FromArgb(0x00, c.R, c.G, c.B), 0x66, c),
+                    Opacity = 0.7,
+                };
+                Canvas.SetLeft(glow, _rng.NextDouble() * (w - 12) + 6 - size * 1.75);
+                double gy = _rng.NextDouble() * (h - 12) + 6;
+                Canvas.SetTop(glow, gy - size * 1.75);
+                StarCanvas.Children.Add(glow);
+            }
+
             Canvas.SetLeft(star, _rng.NextDouble() * (w - 12) + 6);
             Canvas.SetTop(star, _rng.NextDouble() * (h - 12) + 6);
             StarCanvas.Children.Add(star);
 
-            // slow random twinkle
-            var anim = new DoubleAnimation
-            {
-                From = star.Opacity,
-                To = _rng.NextDouble() * 0.25 + 0.05,
-                Duration = new Duration(TimeSpan.FromSeconds(_rng.NextDouble() * 2.6 + 1.4)),
-                AutoReverse = true,
-                RepeatBehavior = RepeatBehavior.Forever,
-                BeginTime = TimeSpan.FromSeconds(_rng.NextDouble() * 3),
-            };
-            Storyboard.SetTarget(anim, star);
-            Storyboard.SetTargetProperty(anim, "Opacity");
-            var sb = new Storyboard();
-            sb.Children.Add(anim);
-            sb.Begin();
+            Animate(star, "Opacity", peak, _rng.NextDouble() * 0.22 + 0.04,
+                    _rng.NextDouble() * 2.6 + 1.4, _rng.NextDouble() * 3);
         }
+    }
+
+    // A soft radial-gradient bloom that slowly pulses (opacity) and drifts (translate).
+    private void AddNebula(double cx, double cy, double diameter, Color edge, byte coreAlpha)
+    {
+        Color core = Color.FromArgb(coreAlpha, edge.R, edge.G, edge.B);
+        var bloom = new Ellipse
+        {
+            Width = diameter,
+            Height = diameter,
+            Fill = RadialFill(edge, coreAlpha, core),
+            Opacity = 0.85,
+        };
+        Canvas.SetLeft(bloom, cx - diameter / 2);
+        Canvas.SetTop(bloom, cy - diameter / 2);
+        StarCanvas.Children.Add(bloom);
+
+        // Opacity-only pulse — runs on the composition (GPU) thread, so it stays smooth and
+        // never competes with the UI thread. No positional drift (that was UI-thread work).
+        Animate(bloom, "Opacity", 0.55, 0.95, _rng.NextDouble() * 4 + 6, _rng.NextDouble() * 2);
+    }
+
+    private static RadialGradientBrush RadialFill(Color edge, byte coreAlpha, Color coreColor)
+    {
+        var b = new RadialGradientBrush();
+        b.GradientStops.Add(new GradientStop { Color = Color.FromArgb(coreAlpha, coreColor.R, coreColor.G, coreColor.B), Offset = 0 });
+        b.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0x00, edge.R, edge.G, edge.B), Offset = 1 });
+        return b;
+    }
+
+    private void Animate(DependencyObject target, string prop, double from, double to, double seconds, double delay)
+    {
+        var anim = new DoubleAnimation
+        {
+            From = from,
+            To = to,
+            Duration = new Duration(TimeSpan.FromSeconds(seconds)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(delay),
+            EnableDependentAnimation = true,
+        };
+        Storyboard.SetTarget(anim, target);
+        Storyboard.SetTargetProperty(anim, prop);
+        var sb = new Storyboard();
+        sb.Children.Add(anim);
+        sb.Begin();
     }
 
     // ── sparkline ────────────────────────────────────────────────────────────
@@ -246,6 +304,9 @@ public sealed partial class DashboardPage : Page
         ShowStatus($"Applied {ok} SAFE tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         Refresh();
+
+        int rebootCount = _engine.Tweaks.Count(t => t.Tier == TweakTier.Safe && t.NeedsReboot && t.Applied);
+        if (rebootCount > 0) await Views.RebootPrompt.ShowAsync(this.XamlRoot, rebootCount);
     }
 
     private async void RevertAll_Click(object sender, RoutedEventArgs e)

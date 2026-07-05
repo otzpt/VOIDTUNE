@@ -55,6 +55,7 @@ public sealed partial class TweaksPage : Page
         {
             ApplyFilter();
         }
+        HwChip.Text = $"{HardwareInfo.CpuVendor} · {HardwareInfo.GpuVendor} · WIN {HardwareInfo.WinBuild}";
     }
 
     /// <summary>Categories not in the curated list — e.g. "Custom" from the DevTools Tweak Lab.
@@ -135,7 +136,13 @@ public sealed partial class TweaksPage : Page
     }
 
     private void UpdateCount(int? shown = null)
-        => CountLine.Text = $"{shown ?? _engine.Tweaks.Count} shown · {_engine.AppliedCount} applied";
+    {
+        int shownN = shown ?? _engine.Tweaks.Count;
+        CountLine.Text = $"{shownN} shown · {_engine.AppliedCount} applied";
+        HeroApplied.Text = _engine.AppliedCount.ToString();
+        HeroTotal.Text = _engine.Tweaks.Count.ToString();
+        HeroShown.Text = shownN.ToString();
+    }
 
     /// <summary>
     /// Toggling a tweak applies (on) or reverts (off) that single tweak immediately and persists it.
@@ -158,7 +165,8 @@ public sealed partial class TweaksPage : Page
         UpdateCount();
         ShowStatus(fail > 0
             ? $"{t.Name}: couldn't {(on ? "apply" : "revert")}."
-            : $"{t.Name} {(t.Applied ? "applied" : "reverted")} · saved.",
+            : $"{t.Name} {(t.Applied ? "applied" : "reverted")} · saved."
+              + (on && t.Applied && t.NeedsReboot ? " Needs a restart to take effect." : ""),
             fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
     }
 
@@ -186,6 +194,9 @@ public sealed partial class TweaksPage : Page
         ShowStatus($"Applied {ok} {label} tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         ApplyFilter();
+
+        int rebootCount = tweaks.Count(t => t.NeedsReboot && t.Applied);
+        if (rebootCount > 0) await RebootPrompt.ShowAsync(this.XamlRoot, rebootCount);
     }
 
     /// <summary>

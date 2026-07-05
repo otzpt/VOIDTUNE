@@ -20,12 +20,60 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Spacing="3">
-            <TextBlock Text="Tweaks" Style="{StaticResource PageTitle}" />
-            <TextBlock Text="REVERSIBLE SYSTEM OPTIMIZATIONS · QUALITY OVER QUANTITY"
-                       Style="{StaticResource MonoCaption}" />
-        </StackPanel>
+        <!-- Hero header -->
+        <Border Grid.Row="0" CornerRadius="14" BorderThickness="1" BorderBrush="#3D8B5CF6"
+                Background="{StaticResource HeroBackdrop}" Padding="24,18">
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Text="Tweaks" FontSize="26" FontWeight="Bold" />
+                    <TextBlock Text="REVERSIBLE SYSTEM OPTIMIZATIONS · QUALITY OVER QUANTITY"
+                               Style="{StaticResource MonoCaption}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                        <Border Style="{StaticResource Chip}" Background="#2622C55E" BorderBrush="#5522C55E">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <FontIcon Glyph="&#xE73E;" FontSize="11" Foreground="{StaticResource SafeGreen}" />
+                                <TextBlock Text="toggle to apply · auto-saved" FontFamily="Consolas" FontSize="10.5"
+                                           Foreground="#86EFAC" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Chip}">
+                            <TextBlock x:Name="HwChip" Text="—" FontFamily="Consolas" FontSize="10.5" Opacity="0.75" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <Border Grid.Column="1" Style="{StaticResource GlowCard}" Padding="18,12" VerticalAlignment="Center">
+                    <StackPanel Spacing="1">
+                        <TextBlock x:Name="HeroApplied" Text="0" FontSize="28" FontWeight="Bold"
+                                   Foreground="{StaticResource VoidGradient}" HorizontalAlignment="Center" />
+                        <TextBlock Text="ACTIVE" Style="{StaticResource MonoLabel}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource GlowCard}" Padding="18,12" VerticalAlignment="Center">
+                    <StackPanel Spacing="1">
+                        <TextBlock x:Name="HeroTotal" Text="0" FontSize="28" FontWeight="Bold"
+                                   Foreground="{StaticResource BrandVioletSoft}" HorizontalAlignment="Center" />
+                        <TextBlock Text="AVAILABLE" Style="{StaticResource MonoLabel}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="3" Style="{StaticResource GlowCard}" Padding="18,12" VerticalAlignment="Center">
+                    <StackPanel Spacing="1">
+                        <TextBlock x:Name="HeroShown" Text="0" FontSize="28" FontWeight="Bold"
+                                   Foreground="{StaticResource InfoBlue}" HorizontalAlignment="Center" />
+                        <TextBlock Text="SHOWN" Style="{StaticResource MonoLabel}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
 
         <!-- Filter + action bar -->
         <StackPanel Grid.Row="1" Spacing="12">

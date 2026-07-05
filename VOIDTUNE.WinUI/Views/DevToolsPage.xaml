@@ -297,52 +297,80 @@
                         </Grid>
                         <TextBox x:Name="LabDesc" Header="Description" PlaceholderText="What does it do, and why is it safe to revert?" />
 
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="ADD BLOCK" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
-                            <Button Click="AddReg_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE74C;" FontSize="13" /><TextBlock Text="Registry" /></StackPanel>
-                            </Button>
-                            <Button Click="AddSvc_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE950;" FontSize="13" /><TextBlock Text="Service" /></StackPanel>
-                            </Button>
-                            <Button Click="AddTask_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE823;" FontSize="13" /><TextBlock Text="Scheduled task" /></StackPanel>
-                            </Button>
-                            <Button Click="AddCmd_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE756;" FontSize="13" /><TextBlock Text="Command" /></StackPanel>
-                            </Button>
+                        <!-- Blocks / Code mode switch -->
+                        <Border Background="#14FFFFFF" BorderBrush="#22FFFFFF" BorderThickness="1" CornerRadius="8" Padding="14,8">
+                            <Grid>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="BUILDER MODE" Style="{StaticResource MonoLabel}" />
+                                    <TextBlock x:Name="ModeHint" Text="Visual blocks — no command line needed." FontSize="11.5" Opacity="0.6" />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="CodeModeToggle" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="0"
+                                              OnContent="Code" OffContent="Blocks" Toggled="CodeMode_Toggled" />
+                            </Grid>
+                        </Border>
+
+                        <!-- BLOCKS mode -->
+                        <StackPanel x:Name="BlocksPanel" Spacing="14">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="ADD BLOCK" Style="{StaticResource MonoLabel}" VerticalAlignment="Center" />
+                                <Button Click="AddReg_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE74C;" FontSize="13" /><TextBlock Text="Registry" /></StackPanel>
+                                </Button>
+                                <Button Click="AddSvc_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE950;" FontSize="13" /><TextBlock Text="Service" /></StackPanel>
+                                </Button>
+                                <Button Click="AddTask_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE823;" FontSize="13" /><TextBlock Text="Scheduled task" /></StackPanel>
+                                </Button>
+                                <Button Click="AddCmd_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE756;" FontSize="13" /><TextBlock Text="Command" /></StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <ItemsControl x:Name="BlockList" ItemsSource="{x:Bind Blocks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TweakBlock">
+                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                CornerRadius="8" Margin="0,5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="5" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Rectangle Grid.Column="0" RadiusX="2" RadiusY="2"
+                                                           Fill="{x:Bind AccentHex, Converter={StaticResource HexToBrush}}" />
+                                                <StackPanel Grid.Column="1" Spacing="8" Padding="14,12">
+                                                    <Grid>
+                                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                        <Button Content="Remove" HorizontalAlignment="Right" Tag="{x:Bind}" Click="RemoveBlock_Click" />
+                                                    </Grid>
+                                                    <TextBox Header="{x:Bind Label1}" PlaceholderText="{x:Bind Ph1}" Text="{x:Bind V1, Mode=TwoWay}" FontFamily="Consolas" />
+                                                    <TextBox Header="{x:Bind Label2}" PlaceholderText="{x:Bind Ph2}" Text="{x:Bind V2, Mode=TwoWay}" FontFamily="Consolas"
+                                                             Visibility="{x:Bind Has2, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBox Header="{x:Bind Label3}" PlaceholderText="{x:Bind Ph3}" Text="{x:Bind V3, Mode=TwoWay}" FontFamily="Consolas"
+                                                             Visibility="{x:Bind Has3, Converter={StaticResource BoolToVis}}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="BlockEmpty" Text="No blocks yet — add one above." Opacity="0.5" FontFamily="Consolas" FontSize="12" />
                         </StackPanel>
 
-                        <ItemsControl x:Name="BlockList" ItemsSource="{x:Bind Blocks}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:TweakBlock">
-                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                            CornerRadius="8" Margin="0,5">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="5" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Rectangle Grid.Column="0" RadiusX="2" RadiusY="2"
-                                                       Fill="{x:Bind AccentHex, Converter={StaticResource HexToBrush}}" />
-                                            <StackPanel Grid.Column="1" Spacing="8" Padding="14,12">
-                                                <Grid>
-                                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                                    <Button Content="Remove" HorizontalAlignment="Right" Tag="{x:Bind}" Click="RemoveBlock_Click" />
-                                                </Grid>
-                                                <TextBox Header="{x:Bind Label1}" PlaceholderText="{x:Bind Ph1}" Text="{x:Bind V1, Mode=TwoWay}" FontFamily="Consolas" />
-                                                <TextBox Header="{x:Bind Label2}" PlaceholderText="{x:Bind Ph2}" Text="{x:Bind V2, Mode=TwoWay}" FontFamily="Consolas"
-                                                         Visibility="{x:Bind Has2, Converter={StaticResource BoolToVis}}" />
-                                                <TextBox Header="{x:Bind Label3}" PlaceholderText="{x:Bind Ph3}" Text="{x:Bind V3, Mode=TwoWay}" FontFamily="Consolas"
-                                                         Visibility="{x:Bind Has3, Converter={StaticResource BoolToVis}}" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock x:Name="BlockEmpty" Text="No blocks yet — add one above." Opacity="0.5" FontFamily="Consolas" FontSize="12" />
+                        <!-- CODE mode -->
+                        <StackPanel x:Name="CodePanel" Spacing="10" Visibility="Collapsed">
+                            <TextBox x:Name="CodeApply" Header="Apply command" FontFamily="Consolas" AcceptsReturn="True"
+                                     TextWrapping="Wrap" MinHeight="70"
+                                     PlaceholderText="e.g. reg add &quot;HKCU\...&quot; /v X /t REG_DWORD /d 1 /f     (prefix PS: to run in PowerShell)" />
+                            <TextBox x:Name="CodeRevert" Header="Revert command (optional)" FontFamily="Consolas" AcceptsReturn="True"
+                                     TextWrapping="Wrap" MinHeight="70"
+                                     PlaceholderText="e.g. reg delete &quot;HKCU\...&quot; /v X /f" />
+                            <TextBlock Text="Chain steps with &amp; and end cmd.exe scripts with &amp; exit /b 0. Runs elevated."
+                                       FontFamily="Consolas" FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
+                            <Button Content="↑ Load from blocks" Click="LoadCodeFromBlocks_Click" HorizontalAlignment="Left" />
+                        </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button Content="Preview" Click="Preview_Click" />

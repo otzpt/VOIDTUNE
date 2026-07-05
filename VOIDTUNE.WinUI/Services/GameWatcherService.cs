@@ -66,7 +66,10 @@ public static class GameWatcherService
             int pid = DetectFullscreenGame();
             if (pid <= 0) return;
 
-            var (ok, msg) = sched.BoostGame(pid, pushBackground: true);
+            // pushBackground:false — never move other processes onto a core subset. That crammed
+            // background apps (incl. the game's own helpers, ShareX, browsers) onto a few cores and
+            // hurt FPS/hotkeys. The boost is now purely High priority + EcoQoS off on the game.
+            var (ok, msg) = sched.BoostGame(pid, pushBackground: false);
             if (ok) TweakEngine.Instance.EmitLog("Auto Game Boost: " + msg);
         }
         catch { /* the watcher must never crash the app */ }

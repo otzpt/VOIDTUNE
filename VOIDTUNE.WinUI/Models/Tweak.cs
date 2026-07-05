@@ -30,6 +30,12 @@ public partial class Tweak : ObservableObject
     /// exists on a newer OS are filtered out below their build — e.g. Windows 11 = 22000.</summary>
     public int MinBuild { get; init; }
 
+    /// <summary>True when the tweak only takes full effect after a restart (timers, GPU
+    /// scheduling, MSI mode, kernel/Session-Manager settings). Applying these live can leave
+    /// interrupt/timer handling half-applied and cause lag until a reboot — so the app offers
+    /// to restart after applying any of them.</summary>
+    public bool NeedsReboot { get; init; }
+
     [ObservableProperty] private bool _applied;
     [ObservableProperty] private bool _selected;
 

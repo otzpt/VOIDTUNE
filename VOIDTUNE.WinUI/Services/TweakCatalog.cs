@@ -41,8 +41,6 @@ public static class TweakCatalog
         {
             arch.Add(new() { Id="ix1", Category="CPU", Tier=TweakTier.Safe, Name="Intel Speed Shift EPP", Description="[INTEL] Enable Speed Shift energy/performance preference.",
                 ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /t REG_DWORD /d 100 /f" });
-            arch.Add(new() { Id="ix2", Category="CPU", Tier=TweakTier.Extreme, Name="Intel Disable C-States", Description="[INTEL] Prevent deep-sleep latency spikes.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Processor"" /v Capabilities /t REG_DWORD /d 0x0007e066 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Processor"" /v Capabilities /f" });
             arch.Add(new() { Id="ix3", Category="CPU", Tier=TweakTier.Extreme, Name="Intel No SpeedStep", Description="[INTEL] Keep all cores at max frequency.",
                 ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /t REG_DWORD /d 100 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /t REG_DWORD /d 0 /f" });
         }
@@ -52,8 +50,6 @@ public static class TweakCatalog
                 ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power"" /v CpuEnergyPerfPref /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Power"" /v CpuEnergyPerfPref /f" });
             arch.Add(new() { Id="ax2", Category="CPU", Tier=TweakTier.Extreme, Name="AMD Boost Max", Description="[AMD] Maximum precision boost via power plan.",
                 ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 100 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 50 && powercfg -setactive scheme_current" });
-            arch.Add(new() { Id="ax3", Category="CPU", Tier=TweakTier.Extreme, Name="AMD Disable C6", Description="[AMD] Disable C6 core idle to cut latency spikes.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Processor"" /v Capabilities /t REG_DWORD /d 0x0007e066 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Processor"" /v Capabilities /f" });
         }
         if (gpu == "NVIDIA")
         {
@@ -92,20 +88,15 @@ public static class TweakCatalog
         try { ram = HardwareInfo.TotalRamGb; } catch { /* leave 0 → skip */ }
         if (ram >= 16)
         {
-            arch.Add(new() { Id="rx1", Category="Storage", Tier=TweakTier.Extreme, Name="NTFS RAM Boost", Description=$"[{ram:0} GB RAM] Let NTFS use more RAM for metadata caching (fsutil memoryusage 2) — faster file access on high-memory systems.",
-                ApplyCmd="fsutil behavior set memoryusage 2", RevertCmd="fsutil behavior set memoryusage 1" });
         }
         if (ram >= 32)
         {
-            arch.Add(new() { Id="rx2", Category="Storage", Tier=TweakTier.Extreme, Name="Large NTFS Paged Pool", Description=$"[{ram:0} GB RAM] Raise the NTFS paged-pool limit so large directories and file caches stay resident. High-memory systems only.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v PoolUsageMaximum /t REG_DWORD /d 60 /f",
-                RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v PoolUsageMaximum /f & exit /b 0" });
         }
 
         // Hybrid-CPU-gated: only meaningful when P-cores and E-cores coexist.
         if (VoidSchedulerService.IsHybridCpu)
         {
-            arch.Add(new() { Id="hy1", Category="Game", Tier=TweakTier.Safe, Name="Prefer P-Cores for Foreground", Description="[HYBRID CPU] Bias the scheduler toward the performance cores for the app you're using. Pairs with Auto Game Boost.",
+            arch.Add(new() { Id="hy1", NeedsReboot=true, Category="Game", Tier=TweakTier.Safe, Name="Prefer P-Cores for Foreground", Description="[HYBRID CPU] Bias the scheduler toward the performance cores for the app you're using. Pairs with Auto Game Boost.",
                 ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v HeteroPolicy /t REG_DWORD /d 4 /f",
                 RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v HeteroPolicy /f & exit /b 0" });
         }
@@ -119,23 +110,17 @@ public static class TweakCatalog
         // ── CPU ──────────────────────────────────────────────────────────────
         new() { Id="cpu2", Category="CPU", Tier=TweakTier.Safe, Name="Win32 Priority Separation", Description="Foreground apps get the largest CPU time slices.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 38 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 2 /f" },
-        new() { Id="cpu3", Category="CPU", Tier=TweakTier.Safe, Name="High-Precision Timer", Description="Request a high-resolution global system timer.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v GlobalTimerResolutionRequests /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v GlobalTimerResolutionRequests /t REG_DWORD /d 0 /f" },
         new() { Id="cpu4", Category="CPU", Tier=TweakTier.Safe, Name="Perf Boost Mode", Description="Maximum processor turbo boost.",
             ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 2 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 && powercfg -setactive scheme_current" },
-        new() { Id="cpu6", Category="CPU", Tier=TweakTier.Extreme, Name="Force All Cores", Description="Disable CPU core parking.",
-            ApplyCmd="powercfg -setacvalueindex 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 54533251-82be-4824-96c1-47b60b740d00 0cc5b647-c1df-4637-891a-dec35c318583 100 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="powercfg -setacvalueindex 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 54533251-82be-4824-96c1-47b60b740d00 0cc5b647-c1df-4637-891a-dec35c318583 0 & powercfg -setactive scheme_current & exit /b 0" },
         new() { Id="cpu7", Category="CPU", Tier=TweakTier.Extreme, Name="No Power Throttling", Description="Remove background CPU power limits.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Power\PowerThrottling"" /v PowerThrottlingOff /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Power\PowerThrottling"" /v PowerThrottlingOff /f" },
-        new() { Id="cpu9", Category="CPU", Tier=TweakTier.Safe, Name="Distribute Timers", Description="Spread timer interrupts across all cores instead of core 0.",
+        new() { Id="cpu9", NeedsReboot=true, Category="CPU", Tier=TweakTier.Safe, Name="Distribute Timers", Description="Spread timer interrupts across all cores instead of core 0.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v DistributeTimers /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v DistributeTimers /t REG_DWORD /d 0 /f" },
-        new() { Id="cpu10", Category="CPU", Tier=TweakTier.Extreme, Name="No Lazy Timer", Description="Force always-on high-resolution timer. Lower latency, higher idle power.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v NoLazyMode /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel"" /v NoLazyMode /t REG_DWORD /d 0 /f" },
-        new() { Id="cpu11", Category="CPU", Tier=TweakTier.Safe, Name="MMCSS Responsiveness = 0", Description="Give foreground/game threads maximum scheduler priority.",
-            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v SystemResponsiveness /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v SystemResponsiveness /t REG_DWORD /d 20 /f" },
+        new() { Id="cpu11", Category="CPU", Tier=TweakTier.Safe, Name="MMCSS Responsiveness", Description="Reserve only 10% of CPU for background so games/audio get the rest — without fully starving the audio engine (SystemResponsiveness=0 causes pops).",
+            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v SystemResponsiveness /t REG_DWORD /d 10 /f", RevertCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v SystemResponsiveness /t REG_DWORD /d 20 /f" },
 
         // ── GPU ──────────────────────────────────────────────────────────────
-        new() { Id="gpu1", Category="GPU", Tier=TweakTier.Safe, Name="HW GPU Scheduling", Description="Enable hardware-accelerated GPU scheduling.",
+        new() { Id="gpu1", NeedsReboot=true, Category="GPU", Tier=TweakTier.Extreme, Name="HW GPU Scheduling", Description="Enable hardware-accelerated GPU scheduling (HAGS). Helps on some systems, but is a coin-flip — on others it causes stutter and alt-tab lag. Opt-in; toggle off and reboot if you get hitching.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v HwSchMode /t REG_DWORD /d 2 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v HwSchMode /t REG_DWORD /d 1 /f" },
         new() { Id="gpu2", Category="GPU", Tier=TweakTier.Safe, Name="GPU Priority 8", Description="Raise GPU scheduling priority for games.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"" /v ""GPU Priority"" /t REG_DWORD /d 8 /f", RevertCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"" /v ""GPU Priority"" /t REG_DWORD /d 1 /f" },
@@ -155,52 +140,20 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableFrameBufferCompression /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableFrameBufferCompression /f" },
         new() { Id="gpu10", Category="GPU", Tier=TweakTier.Safe, Name="DWM Queue Size", Description="Limit DWM queued buffers to 2 for lower display latency.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows\Dwm"" /v MaxQueuedBuffers /t REG_DWORD /d 2 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Microsoft\Windows\Dwm"" /v MaxQueuedBuffers /f" },
-        new() { Id="gpu11", Category="GPU", Tier=TweakTier.Safe, Name="No VSync Latency Update", Description="Disable VSync latency update to reduce display pipeline delays.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableVsyncLatencyUpdate /t REG_DWORD /d 0 /f && reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v DisableVsyncLatencyUpdate /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableVsyncLatencyUpdate /f & reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v DisableVsyncLatencyUpdate /f & exit /b 0" },
-        new() { Id="gpu12", Category="GPU", Tier=TweakTier.Extreme, Name="No GPU Preemption", Description="Disable mid-frame GPU preemption. May cause TDR on heavy loads.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableMidGfxPreemption /t REG_DWORD /d 0 /f && reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableMidBufferPreemption /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableMidGfxPreemption /f & reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v EnableMidBufferPreemption /f & exit /b 0" },
-        new() { Id="gpu13", Category="GPU", Tier=TweakTier.Extreme, Name="Max GPU Clocks", Description="Disable dynamic GPU P-states. Higher power draw.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v DisableDynamicPstate /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers"" /v DisableDynamicPstate /t REG_DWORD /d 0 /f" },
 
         // ── RAM ──────────────────────────────────────────────────────────────
-        new() { Id="ram1", Category="RAM", Tier=TweakTier.Safe, Name="Disable Paging Executive", Description="Keep the kernel in RAM instead of paging it to disk.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePagingExecutive /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePagingExecutive /t REG_DWORD /d 0 /f" },
         new() { Id="ram3", Category="RAM", Tier=TweakTier.Safe, Name="Clear Temp & DNS", Description="Flush temp files and the DNS cache (one-shot).",
             ApplyCmd=@"del /q /f /s ""%TEMP%\*"" 2>nul & ipconfig /flushdns & exit /b 0", RevertCmd="" },
-        new() { Id="ram5", Category="RAM", Tier=TweakTier.Safe, Name="No Page Combining", Description="Disable page combining, reduces memory-management overhead.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 0 /f" },
         new() { Id="ram7", Category="RAM", Tier=TweakTier.Safe, Name="Optimal Page File", Description="Auto-size the pagefile to 1.5x RAM initial / 3x RAM max.",
             ApplyCmd=@"PS:$ram=[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1MB); $i=[math]::Round($ram*1.5); $m=[math]::Round($ram*3); $pf=Get-WmiObject Win32_PageFileSetting; if($pf){$pf|%{$_.InitialSize=$i;$_.MaximumSize=$m;$_.Put()|Out-Null}}else{Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{Name='C:\pagefile.sys';InitialSize=$i;MaximumSize=$m}|Out-Null}", RevertCmd="" },
 
         // ── Network ───────────────────────────────────────────────────────────
-        new() { Id="net1", Category="Network", Tier=TweakTier.Safe, Name="Disable Nagle's Algorithm", Description="TCPNoDelay for lower latency.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v TCPNoDelay /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v TCPNoDelay /f" },
-        new() { Id="net2", Category="Network", Tier=TweakTier.Safe, Name="TCP Fast Open", Description="Reduce TCP handshake latency.",
-            ApplyCmd="netsh int tcp set global fastopen=enabled fastopenfallback=enabled", RevertCmd="netsh int tcp set global fastopen=disabled fastopenfallback=disabled" },
-        new() { Id="net3", Category="Network", Tier=TweakTier.Safe, Name="Enable RSS", Description="Multi-core receive-side scaling.",
-            ApplyCmd="netsh int tcp set global rss=enabled", RevertCmd="netsh int tcp set global rss=disabled" },
-        new() { Id="net4", Category="Network", Tier=TweakTier.Safe, Name="Flush DNS", Description="Clear the stale DNS cache (one-shot).",
-            ApplyCmd="ipconfig /flushdns", RevertCmd="" },
         new() { Id="net5", Category="Network", Tier=TweakTier.Extreme, Name="No Network Throttling", Description="Remove the QoS network-throttling index.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v NetworkThrottlingIndex /t REG_DWORD /d 4294967295 /f", RevertCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile"" /v NetworkThrottlingIndex /t REG_DWORD /d 10 /f" },
-        new() { Id="net6", Category="Network", Tier=TweakTier.Safe, Name="QoS Reserve Off", Description="Remove the 20% bandwidth reservation held by Psched.",
-            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\Psched"" /v NonBestEffortLimit /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\Psched"" /v NonBestEffortLimit /f" },
-        new() { Id="net7", Category="Network", Tier=TweakTier.Safe, Name="No Bandwidth Throttle", Description="Disable TCP receive-side bandwidth throttling.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v DisableBandwidthThrottling /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v DisableBandwidthThrottling /f" },
-        new() { Id="net8", Category="Network", Tier=TweakTier.Safe, Name="AFD Fast Send", Description="Raise AFD datagram fast-send threshold to 16KB for better UDP throughput.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters"" /v FastSendDatagramThreshold /t REG_DWORD /d 16384 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Services\AFD\Parameters"" /v FastSendDatagramThreshold /f" },
-        new() { Id="net9", Category="Network", Tier=TweakTier.Safe, Name="TCP Timed Wait", Description="Reduce TIME_WAIT to 30s to free ports faster.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v TcpTimedWaitDelay /t REG_DWORD /d 30 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v TcpTimedWaitDelay /t REG_DWORD /d 120 /f" },
-        new() { Id="net10", Category="Network", Tier=TweakTier.Safe, Name="Max TCP Ports", Description="Expand ephemeral port range to 65534.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v MaxUserPort /t REG_DWORD /d 65534 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters"" /v MaxUserPort /t REG_DWORD /d 5000 /f" },
-        new() { Id="net11", Category="Network", Tier=TweakTier.Safe, Name="Disable ECN", Description="Disable Explicit Congestion Notification for router compatibility.",
-            ApplyCmd="netsh int tcp set global ecncapability=disabled", RevertCmd="netsh int tcp set global ecncapability=enabled" },
         new() { Id="net12", Category="Network", Tier=TweakTier.Safe, Name="Disable RSC", Description="Disable Receive Segment Coalescing, reduces latency spikes.",
             ApplyCmd="netsh int tcp set global rsc=disabled", RevertCmd="netsh int tcp set global rsc=enabled" },
-        new() { Id="net13", Category="Network", Tier=TweakTier.Safe, Name="UDP URO", Description="Enable UDP Receive Offload for better UDP throughput.",
-            ApplyCmd="netsh int udp set global uro=enabled", RevertCmd="netsh int udp set global uro=disabled" },
-        new() { Id="net14", Category="Network", Tier=TweakTier.Safe, Name="CTCP", Description="Compound TCP congestion algorithm for high-bandwidth links.",
-            ApplyCmd="netsh int tcp set global congestionprovider=ctcp 2>nul & exit /b 0", RevertCmd="netsh int tcp set global congestionprovider=default 2>nul & exit /b 0" },
+        new() { Id="net13", Category="Network", Tier=TweakTier.Safe, Name="Low-Latency UDP", Description="Disable UDP Receive Offload — URO coalesces incoming UDP packets for throughput, which adds a little latency. Games (UDP) want them delivered immediately, so this keeps them uncoalesced.",
+            ApplyCmd="netsh int udp set global uro=disabled", RevertCmd="netsh int udp set global uro=enabled" },
 
         // ── Debloat ───────────────────────────────────────────────────────────
         new() { Id="deb1", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Telemetry", Description="Stop and disable the DiagTrack service.",
@@ -309,6 +262,15 @@ public static class TweakCatalog
             ApplyCmd="PS:try { Get-AppxPackage -Name '*Microsoft.WindowsMaps*','*Microsoft.Todos*','*Microsoft.MicrosoftOfficeHub*' | Remove-AppxPackage -EA SilentlyContinue } catch {}; exit 0", RevertCmd="PS:try { Get-AppxPackage -AllUsers -Name '*Microsoft.WindowsMaps*','*Microsoft.Todos*','*Microsoft.MicrosoftOfficeHub*' | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register (Join-Path $_.InstallLocation 'AppXManifest.xml') -EA SilentlyContinue } } catch {}; exit 0" },
         new() { Id="appx10", Category="Processes", Tier=TweakTier.Extreme, Name="Remove Cortana & Mixed Reality", Description="Uninstall the Cortana app and the Mixed Reality Portal.",
             ApplyCmd="PS:try { Get-AppxPackage -Name '*549981C3F5F10*','*Microsoft.MixedReality.Portal*' | Remove-AppxPackage -EA SilentlyContinue } catch {}; exit 0", RevertCmd="PS:try { Get-AppxPackage -AllUsers -Name '*549981C3F5F10*','*Microsoft.MixedReality.Portal*' | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register (Join-Path $_.InstallLocation 'AppXManifest.xml') -EA SilentlyContinue } } catch {}; exit 0" },
+        new() { Id="appx11", Category="Processes", Tier=TweakTier.Extreme, Name="Remove Promoted Junk (Candy Crush etc.)", Description="Uninstall the auto-installed promoted apps Windows drops on you — Candy Crush & other King games, Disney+, TikTok, Facebook, Instagram, Netflix, Prime Video, Spotify stub, LinkedIn, Solitaire, Duolingo and friends. One toggle. Reinstall any from the Store if you actually want it.",
+            ApplyCmd="PS:try { Get-AppxPackage -Name '*king.com*','*CandyCrush*','*BubbleWitch*','*FarmHeroes*','*Disney*','*BytedancePte.TikTok*','*Facebook*','*Instagram*','*4DF9E0F8.Netflix*','*Netflix*','*AmazonVideo.PrimeVideo*','*SpotifyAB.SpotifyMusic*','*7EE7776C.LinkedInforWindows*','*Microsoft.MicrosoftSolitaireCollection*','*Duolingo*','*PandoraMediaInc*','*Flipboard*','*Twitter*','*PicsArt*' | Remove-AppxPackage -EA SilentlyContinue } catch {}; exit 0",
+            RevertCmd="PS:try { Get-AppxPackage -AllUsers -Name '*king.com*','*Disney*','*TikTok*','*Facebook*','*Instagram*','*Netflix*','*PrimeVideo*','*SpotifyMusic*','*LinkedIn*','*SolitaireCollection*' | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register (Join-Path $_.InstallLocation 'AppXManifest.xml') -EA SilentlyContinue } } catch {}; exit 0" },
+        new() { Id="appx12", Category="Processes", Tier=TweakTier.Extreme, Name="Remove Dev Home, Family & Journal", Description="Uninstall Dev Home, Family Safety, Journal and Whiteboard — preinstalled apps with background components most people never open.",
+            ApplyCmd="PS:try { Get-AppxPackage -Name '*Microsoft.Windows.DevHome*','*MicrosoftCorporationII.MicrosoftFamily*','*Microsoft.MicrosoftJournal*','*Microsoft.Whiteboard*' | Remove-AppxPackage -EA SilentlyContinue } catch {}; exit 0",
+            RevertCmd="PS:try { Get-AppxPackage -AllUsers -Name '*Microsoft.Windows.DevHome*','*MicrosoftFamily*','*Microsoft.Whiteboard*' | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register (Join-Path $_.InstallLocation 'AppXManifest.xml') -EA SilentlyContinue } } catch {}; exit 0" },
+        new() { Id="appx13", Category="Processes", Tier=TweakTier.Extreme, Name="Remove Quick Assist & New Outlook", Description="Uninstall the Quick Assist remote-help app and the promoted 'new Outlook' web-wrapper stub.",
+            ApplyCmd="PS:try { Get-AppxPackage -Name '*MicrosoftCorporationII.QuickAssist*','*Microsoft.OutlookForWindows*' | Remove-AppxPackage -EA SilentlyContinue } catch {}; exit 0",
+            RevertCmd="PS:try { Get-AppxPackage -AllUsers -Name '*QuickAssist*','*OutlookForWindows*' | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register (Join-Path $_.InstallLocation 'AppXManifest.xml') -EA SilentlyContinue } } catch {}; exit 0" },
 
         // ── Third-party background updaters that run idle on a real (non-clean) install ──
         new() { Id="upd1", Category="Processes", Tier=TweakTier.Safe, Name="Disable Google Update", Description="Stop the Google Update services (gupdate/gupdatem) — Chrome's idle background updater. Update Chrome manually via its menu.",
@@ -359,7 +321,7 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"" /v Priority /t REG_DWORD /d 6 /f && reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"" /v ""SFIO Priority"" /t REG_SZ /d High /f", RevertCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games"" /v Priority /t REG_DWORD /d 2 /f" },
         new() { Id="gm8", Category="Game", Tier=TweakTier.Safe, Name="No USB Suspend", Description="Prevent USB devices powering off mid-game (input stutter).",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\USB"" /v DisableSelectiveSuspend /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\USB"" /v DisableSelectiveSuspend /t REG_DWORD /d 0 /f" },
-        new() { Id="gm9", Category="Game", Tier=TweakTier.Safe, Name="GPU MSI Mode", Description="Enable Message Signaled Interrupts on the GPU only, if supported. Safer than all-devices — applying MSI to USB/input controllers can freeze the mouse. Takes effect after reboot.",
+        new() { Id="gm9", NeedsReboot=true, Category="Game", Tier=TweakTier.Extreme, Name="GPU MSI Mode", Description="Enable Message Signaled Interrupts on the GPU only, if supported. Can lower DPC latency, but on some GPU/driver combos it does the opposite and adds stutter. Opt-in; takes effect after reboot.",
             ApplyCmd=@"PS:try { Get-WmiObject Win32_PnPSignedDriver -EA SilentlyContinue | Where-Object { $_.DeviceClass -match 'Display' } | ForEach-Object { $p = ""HKLM:\SYSTEM\CurrentControlSet\Enum\$($_.DeviceID)\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties""; if (Test-Path (Split-Path $p)) { New-Item $p -Force | Out-Null; Set-ItemProperty $p -Name MSISupported -Value 1 } } } catch {}; exit 0", RevertCmd=@"PS:try { Get-WmiObject Win32_PnPSignedDriver -EA SilentlyContinue | Where-Object { $_.DeviceClass -match 'Display' } | ForEach-Object { $p = ""HKLM:\SYSTEM\CurrentControlSet\Enum\$($_.DeviceID)\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties""; if (Test-Path $p) { Set-ItemProperty $p -Name MSISupported -Value 0 } } } catch {}; exit 0" },
 
         // ── Background / Scheduled tasks ────────────────────────────────────────
@@ -427,12 +389,45 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize"" /v StartupDelayInMSec /f & exit /b 0" },
         new() { Id="net20", Category="Network", Tier=TweakTier.Extreme, Name="Cloudflare DNS", Description="Use 1.1.1.1 / 1.0.0.1 — consistently among the fastest public resolvers. Revert returns to your router / DHCP DNS.",
             ApplyCmd=@"PS:try { Get-NetAdapter -Physical | Where-Object Status -eq 'Up' | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ServerAddresses '1.1.1.1','1.0.0.1' } } catch {}; exit 0", RevertCmd=@"PS:try { Get-NetAdapter -Physical | ForEach-Object { Set-DnsClientServerAddress -InterfaceIndex $_.ifIndex -ResetServerAddresses } } catch {}; ipconfig /flushdns | Out-Null; exit 0" },
-        new() { Id="cpu20", Category="CPU", Tier=TweakTier.Extreme, Name="Disable Core Parking", Description="Keep all cores unparked for snappier frame pacing. Slightly higher idle power.",
-            ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 100 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor CPMINCORES 10 & powercfg -setactive scheme_current & exit /b 0" },
         new() { Id="slim40", Category="Processes", Tier=TweakTier.Safe, Name="No Edge Preload", Description="Stop Microsoft Edge from pre-launching and running in the background when closed.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /t REG_DWORD /d 0 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v StartupBoostEnabled /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Edge"" /v BackgroundModeEnabled /f & exit /b 0" },
         new() { Id="deb22", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Windows Recall", Description="Turn off Windows Recall / AI screen-snapshotting (Copilot+ PCs) and its background data analysis. Frees NPU/CPU cycles and disk; harmless on PCs that don't have it.",
             ApplyCmd=@"reg add ""HKCU\Software\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /t REG_DWORD /d 1 /f & exit /b 0", RevertCmd=@"reg delete ""HKCU\Software\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /f & reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI"" /v DisableAIDataAnalysis /f & exit /b 0" },
+
+        // ── 0.8.10 process-reduction additions (vetted safe, inspired by WinUtil) ─
+        new() { Id="deb30", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Consumer Features", Description="Stop Windows silently auto-installing suggested/promoted apps (Candy Crush, etc.) and their background installers.",
+            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent"" /v DisableWindowsConsumerFeatures /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent"" /v DisableWindowsConsumerFeatures /f & exit /b 0" },
+        new() { Id="slim41", Category="Processes", Tier=TweakTier.Safe, Name="Disable Background Apps", Description="Globally stop UWP/Store apps running in the background — a big cut to idle process count. Win32 apps (games, Discord, browsers) are unaffected.",
+            ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications"" /v GlobalUserDisabled /t REG_DWORD /d 1 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Search"" /v BackgroundAppGlobalToggle /t REG_DWORD /d 0 /f & exit /b 0", RevertCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications"" /v GlobalUserDisabled /t REG_DWORD /d 0 /f & reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\Search"" /v BackgroundAppGlobalToggle /t REG_DWORD /d 1 /f & exit /b 0" },
+        new() { Id="deb31", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Notifications", Description="Turn off toast notifications and the notification center — stops their background push work.",
+            ApplyCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications"" /v ToastEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKCU\Software\Microsoft\Windows\CurrentVersion\PushNotifications"" /v ToastEnabled /t REG_DWORD /d 1 /f" },
+        new() { Id="deb32", Category="Debloat", Tier=TweakTier.Safe, Name="Disable Storage Sense", Description="Stop the automatic background disk-cleanup service from waking periodically.",
+            ApplyCmd=@"reg add ""HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy"" /v 01 /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy"" /v 01 /t REG_DWORD /d 1 /f" },
+        new() { Id="stor30", Category="Storage", Tier=TweakTier.Safe, Name="Disable Hibernation", Description="Turn off hibernation to reclaim several GB (hiberfil.sys) and stop hibernate bookkeeping. Also disables Fast Startup.",
+            ApplyCmd="powercfg /hibernate off", RevertCmd="powercfg /hibernate on" },
+        new() { Id="net21", Category="Network", Tier=TweakTier.Safe, Name="Prefer IPv4 + No Teredo", Description="Prefer IPv4 over IPv6 and disable the Teredo tunneling adapter — removes an idle network component. IPv6 itself stays on.",
+            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters"" /v DisabledComponents /t REG_DWORD /d 0x20 /f & netsh interface teredo set state disabled & exit /b 0", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters"" /v DisabledComponents /f & netsh interface teredo set state default & exit /b 0" },
+        new() { Id="stor31", Category="Storage", Tier=TweakTier.Safe, Name="Enable Long Paths", Description="Allow file paths longer than 260 characters — prevents deep-folder errors for games/dev tools. Pure win, no downside.",
+            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\FileSystem"" /v LongPathsEnabled /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\FileSystem"" /v LongPathsEnabled /t REG_DWORD /d 0 /f" },
+        new() { Id="sec1", Category="Debloat", Tier=TweakTier.Extreme, Name="Block WPBT Binaries", Description="Block the Windows Platform Binary Table — stops motherboard firmware from silently injecting OEM executables at boot. Safe on most systems; revert if a vendor tool stops working.",
+            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager"" /v DisableWpbtExecution /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager"" /v DisableWpbtExecution /f & exit /b 0" },
+
+        // ── 0.8.10 high-value additions (FPS / fewer processes / snappier) ───────
+        new() { Id="deb40", Category="Processes", Tier=TweakTier.Safe, Name="Disable Telemetry Tasks", Description="Disable the scheduled tasks that wake periodically to collect telemetry (Compatibility Appraiser, Customer Experience Improvement, disk diagnostics). Fewer background wake-ups.",
+            ApplyCmd=@"schtasks /Change /TN ""\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser"" /Disable & schtasks /Change /TN ""\Microsoft\Windows\Application Experience\ProgramDataUpdater"" /Disable & schtasks /Change /TN ""\Microsoft\Windows\Customer Experience Improvement Program\Consolidator"" /Disable & schtasks /Change /TN ""\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip"" /Disable & schtasks /Change /TN ""\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector"" /Disable & exit /b 0",
+            RevertCmd=@"schtasks /Change /TN ""\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser"" /Enable & schtasks /Change /TN ""\Microsoft\Windows\Application Experience\ProgramDataUpdater"" /Enable & schtasks /Change /TN ""\Microsoft\Windows\Customer Experience Improvement Program\Consolidator"" /Enable & schtasks /Change /TN ""\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip"" /Enable & schtasks /Change /TN ""\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector"" /Enable & exit /b 0" },
+        new() { Id="slim50", Category="Processes", Tier=TweakTier.Safe, NeedsReboot=true, Name="Group svchost Processes", Description="Merge the many split svchost.exe hosts into a few grouped ones — a big cut to the process count on systems with plenty of RAM. Sets the split threshold to your installed memory. (Needs 8 GB+; takes effect after reboot.)",
+            ApplyCmd=@"PS:try { $kb=[int]((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1KB); reg add 'HKLM\SYSTEM\CurrentControlSet\Control' /v SvcHostSplitThresholdInKB /t REG_DWORD /d $kb /f | Out-Null } catch {}; exit 0",
+            RevertCmd=@"PS:reg add 'HKLM\SYSTEM\CurrentControlSet\Control' /v SvcHostSplitThresholdInKB /t REG_DWORD /d 380000 /f | Out-Null; exit 0" },
+        new() { Id="upd10", Category="Debloat", Tier=TweakTier.Safe, Name="Block Driver Updates in WU", Description="Stop Windows Update from silently replacing your GPU/chipset drivers with its own (often older) versions. You still get security updates; just not driver overwrites.",
+            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 0 /f & exit /b 0",
+            RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 1 /f & exit /b 0" },
+        new() { Id="ux1", Category="Debloat", Tier=TweakTier.Safe, Name="Faster Shutdown & App Kill", Description="Cut the timeouts Windows waits before killing hung services/apps on shutdown and close — snappier shutdown, no long hang when an app won't close.",
+            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /t REG_SZ /d 1 /f & exit /b 0",
+            RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 5000 /f & reg delete ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /f & reg delete ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /f & reg delete ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /f & exit /b 0" },
+        new() { Id="slim51", Category="Processes", Tier=TweakTier.Safe, Name="Disable Error Reporting", Description="Turn off Windows Error Reporting — removes the WerFault / WerSvc background work that fires on every app hiccup.",
+            ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /t REG_DWORD /d 1 /f & sc config WerSvc start= disabled & sc stop WerSvc & exit /b 0",
+            RevertCmd=@"reg delete ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /f & sc config WerSvc start= demand & exit /b 0" },
 
         // ── Restore (reset to defaults — never auto-selected) ───────────────────
         new() { Id="rst1", Category="Restore", Tier=TweakTier.Safe, Name="Restore Network", Description="Reset TCP/IP global settings to defaults.",
@@ -448,6 +443,14 @@ public static class TweakCatalog
                      @"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v DisablePageCombining /t REG_DWORD /d 0 /f | Out-Null; " +
                      @"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel"" /v DPCTimeout /f 2>$null | Out-Null; " +
                      @"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v LargeSystemCache /f 2>$null | Out-Null; exit 0", RevertCmd="" },
+        new() { Id="rst6", Category="Restore", Tier=TweakTier.Safe, Name="Full Reset to Windows Defaults", Description="The clean slate. Resets power plans (unparks cores), timers, GPU scheduling, memory management, and the whole TCP/IP stack back to stock — including tweaks that were removed from the catalog and can no longer be toggled off. Reboot after. Use this to get a known-good baseline before applying a fresh set.",
+            ApplyCmd="PS:$ErrorActionPreference='SilentlyContinue'; " +
+                     "try { Enable-MMAgent -MemoryCompression } catch {}; fsutil behavior set memoryusage 1 | Out-Null; powercfg -restoredefaultschemes | Out-Null; " +
+                     "$mm='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management'; 'DisablePagingExecutive','DisablePageCombining','LargeSystemCache','IoPageLockLimit','PoolUsageMaximum' | ForEach-Object { Remove-ItemProperty $mm -Name $_ -EA SilentlyContinue }; " +
+                     "$k='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel'; 'NoLazyMode','DistributeTimers','GlobalTimerResolutionRequests','DPCTimeout' | ForEach-Object { Remove-ItemProperty $k -Name $_ -EA SilentlyContinue }; " +
+                     "$g='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers'; 'HwSchMode','EnableVsyncLatencyUpdate','DisableVsyncLatencyUpdate','EnableMidGfxPreemption','EnableMidBufferPreemption','DisableDynamicPstate' | ForEach-Object { Remove-ItemProperty $g -Name $_ -EA SilentlyContinue }; " +
+                     "$tp='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters'; 'TCPNoDelay','TcpTimedWaitDelay','MaxUserPort','DisableBandwidthThrottling' | ForEach-Object { Remove-ItemProperty $tp -Name $_ -EA SilentlyContinue }; " +
+                     "netsh int tcp reset | Out-Null; netsh int ip reset | Out-Null; ipconfig /flushdns | Out-Null; exit 0", RevertCmd="" },
 
     };
 }
