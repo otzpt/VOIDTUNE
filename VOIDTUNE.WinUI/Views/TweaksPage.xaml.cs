@@ -155,6 +155,12 @@ public sealed partial class TweaksPage : Page
         bool on = ts.IsOn;
         if (on == t.Applied) return;   // echo from binding / realization / recycling — not a user click
 
+        if (on && t.Tier == TweakTier.Extreme)
+        {
+            bool confirmed = await ApplyPreviewDialog.ConfirmExtremeAsync(this.XamlRoot, t);
+            if (!confirmed) { ts.IsOn = false; return; }   // declined — undo the visual flip; guard skips the echo
+        }
+
         ts.IsEnabled = false;
         var (ok, fail) = on
             ? await _engine.ApplyAsync(new[] { t }, backup: false)   // single toggle: skip the heavy backup
@@ -172,8 +178,16 @@ public sealed partial class TweaksPage : Page
 
     private async void ApplySafe_Click(object sender, RoutedEventArgs e)
     {
-        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe).ToList();
+        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe && !t.Applied).ToList();
         await RunApply(safe, "SAFE");
+    }
+
+    private async void ApplyExtreme_Click(object sender, RoutedEventArgs e)
+    {
+        var extreme = _engine.Tweaks.Where(t => t.Tier == TweakTier.Extreme && !t.Applied).ToList();
+        await RunApply(extreme, "EXTREME",
+            "These are opt-in because their effect is more aggressive or system-dependent than SAFE. " +
+            "Review the list carefully — uncheck anything you're not sure about.");
     }
 
     private async void RevertAll_Click(object sender, RoutedEventArgs e)
@@ -186,16 +200,24 @@ public sealed partial class TweaksPage : Page
         ApplyFilter();
     }
 
-    private async System.Threading.Tasks.Task RunApply(List<Tweak> tweaks, string label)
+    private async System.Threading.Tasks.Task RunApply(List<Tweak> tweaks, string label, string? extraWarning = null)
     {
-        if (tweaks.Count == 0) { ShowStatus("Nothing to apply.", InfoBarSeverity.Warning); return; }
+        if (tweaks.Count == 0) { ShowStatus($"No {label} tweaks left to apply — everything's already active.", InfoBarSeverity.Informational); return; }
 
-        var (ok, fail) = await RunWithProgress("Applying tweaks", p => _engine.ApplyAsync(tweaks, p));
+        string intro = $"VOIDTUNE is about to apply {tweaks.Count} {label} tweak{(tweaks.Count == 1 ? "" : "s")}. " +
+                       "Uncheck anything you don't want — nothing runs until you hit Apply.";
+        if (!string.IsNullOrEmpty(extraWarning)) intro += "\n\n" + extraWarning;
+
+        var confirmed = await ApplyPreviewDialog.ShowAsync(this.XamlRoot, $"Apply {label} tweaks", intro, tweaks);
+        if (confirmed is null) return;                                  // cancelled
+        if (confirmed.Count == 0) { ShowStatus("Nothing selected.", InfoBarSeverity.Warning); return; }
+
+        var (ok, fail) = await RunWithProgress("Applying tweaks", p => _engine.ApplyAsync(confirmed, p));
         ShowStatus($"Applied {ok} {label} tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         ApplyFilter();
 
-        int rebootCount = tweaks.Count(t => t.NeedsReboot && t.Applied);
+        int rebootCount = confirmed.Count(t => t.NeedsReboot && t.Applied);
         if (rebootCount > 0) await RebootPrompt.ShowAsync(this.XamlRoot, rebootCount);
     }
 

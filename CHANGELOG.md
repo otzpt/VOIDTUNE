@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.11] - 2026-07-05 (WinUI 3 edition)
+
+### Fixed — a real regression from 0.8.10's own Restore tools
+- **"Full Reset to Windows Defaults" was deleting the Ultimate Performance power plan.** It called `powercfg -restoredefaultschemes`, which doesn't just reset values — it wipes any unlocked custom scheme and force-switches to Balanced. This silently downgraded real systems to Balanced power (worse *and* less consistent CPU benchmark results) and, separately, its `netsh int tcp reset` / `netsh int ip reset` fully reinitialized the network stack including the Winsock LSP catalog — capable of crashing any process holding a live socket or custom network filter (VPNs, anti-cheat, cloud sync, voice chat, launchers), which is why some systems lost several running processes after using it. Both replaced with safe, targeted settings-only resets.
+- **"Ultimate Performance" tweak had a locale bug** — it detected an already-unlocked plan by matching the literal English string `"Ultimate Performance"` in `powercfg -list` output, which never matches on non-English Windows. Every apply on a non-English system silently created a brand-new duplicate power scheme instead of reusing the existing one. Now detects it by GUID, independent of display language.
+- Removed **"Disable Touch Keyboard Svc"** — the underlying service is Manual/on-demand by default on virtually every desktop install, so disabling it gave no real benefit while fully breaking the Win+. emoji/symbol picker on some systems.
+- Fixed a process-affinity inheritance chain where a stale restricted core mask (a leftover artifact from an earlier build) could propagate from a parent process down into every child process launched from it, including VOIDTUNE itself, silently limiting it to a subset of CPU cores.
+
+### Added
+- **Apply preview dialog** — clicking Apply SAFE or the new **Apply EXTREME** button now shows exactly which tweaks are about to run, each with its own checkbox (all checked by default) and description. Nothing runs until you review and confirm; uncheck anything you don't want.
+- **Apply EXTREME button** (Tweaks page) — same one-click flow as SAFE, for the opt-in tier, with an extra warning in the preview.
+- **Single EXTREME-tweak confirmation** — toggling on an individual EXTREME tweak now asks for confirmation first.
+- **7 more real process-reducers**, mirroring services that were only manually togglable on the Services page into the one-click SAFE flow: Fax, Offline Maps, Media Player Sharing, Remote Registry, Internet Connection Sharing, Retail Demo Mode, and the Xbox background services stack (Auth Manager, Game Save, Networking, Accessory) — none of which affect Steam/Epic/Riot/FiveM gaming.
+
 ## [0.8.10] - 2026-07-04 (WinUI 3 edition)
 
 ### The quality-over-quantity pass

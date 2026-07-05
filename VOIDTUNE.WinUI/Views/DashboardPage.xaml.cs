@@ -298,14 +298,20 @@ public sealed partial class DashboardPage : Page
 
     private async void ApplySafe_Click(object sender, RoutedEventArgs e)
     {
-        SetBusy(true, "applying SAFE tier…");
-        var (ok, fail) = await _engine.ApplyTierAsync(TweakTier.Safe);
+        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe).ToList();
+        var confirmed = await Views.ApplyPreviewDialog.ShowAsync(this.XamlRoot, "Apply SAFE tweaks",
+            $"VOIDTUNE is about to apply {safe.Count} SAFE tweaks. Uncheck anything you don't want — nothing runs until you hit Apply.", safe);
+        if (confirmed is null) return;                                   // cancelled
+        if (confirmed.Count == 0) { ShowStatus("Nothing selected.", InfoBarSeverity.Warning); return; }
+
+        SetBusy(true, "applying SAFE tweaks…");
+        var (ok, fail) = await _engine.ApplyAsync(confirmed);
         SetBusy(false);
         ShowStatus($"Applied {ok} SAFE tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         Refresh();
 
-        int rebootCount = _engine.Tweaks.Count(t => t.Tier == TweakTier.Safe && t.NeedsReboot && t.Applied);
+        int rebootCount = confirmed.Count(t => t.NeedsReboot && t.Applied);
         if (rebootCount > 0) await Views.RebootPrompt.ShowAsync(this.XamlRoot, rebootCount);
     }
 

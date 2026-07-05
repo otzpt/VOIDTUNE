@@ -208,8 +208,6 @@ public static class TweakCatalog
             ApplyCmd="sc config AJRouter start= disabled & sc stop AJRouter & exit /b 0", RevertCmd="sc config AJRouter start= demand & exit /b 0" },
         new() { Id="slim11", Category="Processes", Tier=TweakTier.Safe, Name="Disable NFC/Payments Svc", Description="Stop the Payments and NFC/SE manager (SEMgrSvc).",
             ApplyCmd="sc config SEMgrSvc start= disabled & sc stop SEMgrSvc & exit /b 0", RevertCmd="sc config SEMgrSvc start= demand & exit /b 0" },
-        new() { Id="slim12", Category="Processes", Tier=TweakTier.Safe, Name="Disable Touch Keyboard Svc", Description="Stop Tablet/Touch Keyboard service on desktops.",
-            ApplyCmd="sc config TabletInputService start= disabled & sc stop TabletInputService & exit /b 0", RevertCmd="sc config TabletInputService start= demand & exit /b 0" },
         new() { Id="slim13", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Compat Assistant", Description="Stop Program Compatibility Assistant service (PcaSvc).",
             ApplyCmd="sc config PcaSvc start= disabled & sc stop PcaSvc & exit /b 0", RevertCmd="sc config PcaSvc start= auto & sc start PcaSvc & exit /b 0" },
         new() { Id="slim14", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Connected Devices", Description="Stop Connected Devices Platform service (CDPSvc) — many background callbacks.",
@@ -282,7 +280,14 @@ public static class TweakCatalog
 
         // ── Power ─────────────────────────────────────────────────────────────
         new() { Id="pow3", Category="Power", Tier=TweakTier.Extreme, Name="Ultimate Performance", Description="Unlock AND activate the hidden Ultimate Performance power plan — max clocks, best FPS.",
-            ApplyCmd=@"PS:$l=(powercfg -list | Out-String); $m=[regex]::Match($l,'([0-9a-fA-F-]{36})\s*\(Ultimate Performance\)'); if($m.Success){$g=$m.Groups[1].Value}else{$o=(powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-String);$g=[regex]::Match($o,'([0-9a-fA-F-]{36})').Value}; if($g){powercfg -setactive $g}", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
+            // Detects an already-unlocked Ultimate Performance plan by GUID, not by name: powercfg's
+            // scheme names are shown in the OS display language ("Ultimate Performance" in English,
+            // "Desempenho Máximo" in Portuguese, etc.), so matching the English string only worked on
+            // English Windows — everywhere else this silently duplicated a brand-new scheme on every
+            // single apply, leaving orphaned plans behind. Any scheme GUID beyond the three built-in
+            // ones (Balanced/High performance/Power saver) is treated as an already-unlocked Ultimate
+            // Performance plan, regardless of locale.
+            ApplyCmd=@"PS:$known=@('381b4222-f694-41f0-9685-ff5bb260df2e','8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c','a1841308-3541-4fab-bc81-f71556f20b4a'); $ids=([regex]::Matches((powercfg -list | Out-String),'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}') | ForEach-Object { $_.Value }); $g=$ids | Where-Object { $known -notcontains $_ } | Select-Object -First 1; if(-not $g){$o=(powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-String);$g=[regex]::Match($o,'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}').Value}; if($g){powercfg -setactive $g}", RevertCmd="powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e" },
         new() { Id="pow4", Category="Power", Tier=TweakTier.Safe, Name="Disable Sleep (AC)", Description="Never sleep while plugged in.",
             ApplyCmd="powercfg /change standby-timeout-ac 0", RevertCmd="powercfg /change standby-timeout-ac 30" },
         new() { Id="pow5", Category="Power", Tier=TweakTier.Safe, Name="Disable Hibernate", Description="Free hiberfil.sys disk space and speed up shutdown.",
@@ -429,6 +434,26 @@ public static class TweakCatalog
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /t REG_DWORD /d 1 /f & sc config WerSvc start= disabled & sc stop WerSvc & exit /b 0",
             RevertCmd=@"reg delete ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /f & sc config WerSvc start= demand & exit /b 0" },
 
+        // ── 0.8.10 round 2: services that were only in the Services tab, mirrored ──
+        // into the one-click SAFE flow. Each is a service almost nobody actively uses
+        // and disabling it has no real downside — the "free wins" other optimizers'
+        // safe profiles include that ours didn't yet.
+        new() { Id="slim52", Category="Processes", Tier=TweakTier.Safe, Name="Disable Fax Service", Description="Stop the Fax service — virtually unused on a modern PC.",
+            ApplyCmd="sc config Fax start= disabled & sc stop Fax & exit /b 0", RevertCmd="sc config Fax start= demand & exit /b 0" },
+        new() { Id="slim53", Category="Processes", Tier=TweakTier.Safe, Name="Disable Offline Maps Svc", Description="Stop the Downloaded Maps Manager (MapsBroker) — only needed if you use the Windows Maps app offline.",
+            ApplyCmd="sc config MapsBroker start= disabled & sc stop MapsBroker & exit /b 0", RevertCmd="sc config MapsBroker start= demand & exit /b 0" },
+        new() { Id="slim54", Category="Processes", Tier=TweakTier.Safe, Name="Disable Media Player Sharing", Description="Stop Windows Media Player Network Sharing (WMPNetworkSvc) — legacy DLNA streaming, rarely used.",
+            ApplyCmd="sc config WMPNetworkSvc start= disabled & sc stop WMPNetworkSvc & exit /b 0", RevertCmd="sc config WMPNetworkSvc start= demand & exit /b 0" },
+        new() { Id="slim55", Category="Processes", Tier=TweakTier.Safe, Name="Disable Remote Registry", Description="Stop Remote Registry — lets other machines edit your registry over the network. No legitimate use on a home PC, and disabling it closes a real attack surface.",
+            ApplyCmd="sc config RemoteRegistry start= disabled & sc stop RemoteRegistry & exit /b 0", RevertCmd="sc config RemoteRegistry start= demand & exit /b 0" },
+        new() { Id="slim56", Category="Processes", Tier=TweakTier.Safe, Name="Disable Internet Connection Sharing", Description="Stop the Internet Connection Sharing service (SharedAccess) — only needed if you're sharing this PC's connection with other devices.",
+            ApplyCmd="sc config SharedAccess start= disabled & sc stop SharedAccess & exit /b 0", RevertCmd="sc config SharedAccess start= demand & exit /b 0" },
+        new() { Id="slim57", Category="Processes", Tier=TweakTier.Safe, Name="Disable Retail Demo Mode", Description="Stop Retail Demo service — exists only for store-floor kiosk PCs.",
+            ApplyCmd="sc config RetailDemo start= disabled & sc stop RetailDemo & exit /b 0", RevertCmd="sc config RetailDemo start= demand & exit /b 0" },
+        new() { Id="slim58", Category="Processes", Tier=TweakTier.Safe, Name="Disable Xbox Background Services", Description="Stop the Xbox Live Auth Manager, Game Save, Networking and Accessory services — background processes for the Xbox app / Game Pass. Steam, Epic, Riot and FiveM don't need any of these; only disable if you don't use the Xbox app or Xbox cloud saves.",
+            ApplyCmd="sc config XblAuthManager start= disabled & sc config XblGameSave start= disabled & sc config XboxNetApiSvc start= disabled & sc config XboxGipSvc start= disabled & sc stop XblAuthManager & sc stop XblGameSave & sc stop XboxNetApiSvc & sc stop XboxGipSvc & exit /b 0",
+            RevertCmd="sc config XblAuthManager start= demand & sc config XblGameSave start= demand & sc config XboxNetApiSvc start= demand & sc config XboxGipSvc start= demand & exit /b 0" },
+
         // ── Restore (reset to defaults — never auto-selected) ───────────────────
         new() { Id="rst1", Category="Restore", Tier=TweakTier.Safe, Name="Restore Network", Description="Reset TCP/IP global settings to defaults.",
             ApplyCmd="netsh int tcp set global autotuninglevel=normal & netsh int tcp set global ecncapability=enabled & netsh int tcp set global rsc=enabled & netsh int tcp set global congestionprovider=default & exit /b 0", RevertCmd="" },
@@ -445,12 +470,22 @@ public static class TweakCatalog
                      @"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management"" /v LargeSystemCache /f 2>$null | Out-Null; exit 0", RevertCmd="" },
         new() { Id="rst6", Category="Restore", Tier=TweakTier.Safe, Name="Full Reset to Windows Defaults", Description="The clean slate. Resets power plans (unparks cores), timers, GPU scheduling, memory management, and the whole TCP/IP stack back to stock — including tweaks that were removed from the catalog and can no longer be toggled off. Reboot after. Use this to get a known-good baseline before applying a fresh set.",
             ApplyCmd="PS:$ErrorActionPreference='SilentlyContinue'; " +
-                     "try { Enable-MMAgent -MemoryCompression } catch {}; fsutil behavior set memoryusage 1 | Out-Null; powercfg -restoredefaultschemes | Out-Null; " +
+                     // NOTE: deliberately NOT using `powercfg -restoredefaultschemes` — it doesn't just
+                     // reset values, it DELETES any unlocked custom scheme (including Ultimate
+                     // Performance) and force-switches to Balanced. That silently downgraded a real
+                     // user's power plan and tanked their benchmarks. Switching the active scheme to
+                     // Balanced is the actual "known-good baseline" intent, without the collateral damage.
+                     "try { Enable-MMAgent -MemoryCompression } catch {}; fsutil behavior set memoryusage 1 | Out-Null; powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e | Out-Null; " +
                      "$mm='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management'; 'DisablePagingExecutive','DisablePageCombining','LargeSystemCache','IoPageLockLimit','PoolUsageMaximum' | ForEach-Object { Remove-ItemProperty $mm -Name $_ -EA SilentlyContinue }; " +
                      "$k='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel'; 'NoLazyMode','DistributeTimers','GlobalTimerResolutionRequests','DPCTimeout' | ForEach-Object { Remove-ItemProperty $k -Name $_ -EA SilentlyContinue }; " +
                      "$g='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers'; 'HwSchMode','EnableVsyncLatencyUpdate','DisableVsyncLatencyUpdate','EnableMidGfxPreemption','EnableMidBufferPreemption','DisableDynamicPstate' | ForEach-Object { Remove-ItemProperty $g -Name $_ -EA SilentlyContinue }; " +
                      "$tp='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters'; 'TCPNoDelay','TcpTimedWaitDelay','MaxUserPort','DisableBandwidthThrottling' | ForEach-Object { Remove-ItemProperty $tp -Name $_ -EA SilentlyContinue }; " +
-                     "netsh int tcp reset | Out-Null; netsh int ip reset | Out-Null; ipconfig /flushdns | Out-Null; exit 0", RevertCmd="" },
+                     // `netsh int tcp/ip reset` fully reinitializes the stack incl. the Winsock LSP
+                     // catalog — it can drop live connections and crash/kill any process holding an
+                     // open socket or a custom network filter (VPNs, anti-cheat, cloud sync, voice
+                     // chat, game launchers). A "restore defaults" tool has no business doing that.
+                     // Same safe, targeted settings reset the rst1 "Restore Network" tweak already uses.
+                     "netsh int tcp set global autotuninglevel=normal | Out-Null; netsh int tcp set global ecncapability=enabled | Out-Null; netsh int tcp set global rsc=enabled | Out-Null; netsh int tcp set global congestionprovider=default | Out-Null; ipconfig /flushdns | Out-Null; exit 0", RevertCmd="" },
 
     };
 }

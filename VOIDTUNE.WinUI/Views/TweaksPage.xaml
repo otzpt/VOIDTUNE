@@ -95,6 +95,12 @@
             </Grid>
             <StackPanel Orientation="Horizontal" Spacing="10">
                 <Button Content="Apply SAFE" Click="ApplySafe_Click" Style="{ThemeResource AccentButtonStyle}" />
+                <Button Click="ApplyExtreme_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE7BA;" FontSize="13" Foreground="{StaticResource ExtremeViolet}" />
+                        <TextBlock Text="Apply EXTREME" />
+                    </StackPanel>
+                </Button>
                 <Button Content="Revert all" Click="RevertAll_Click" />
                 <TextBlock VerticalAlignment="Center" Opacity="0.5" FontFamily="Consolas" FontSize="11"
                            Text="toggle any tweak to apply / revert — saved automatically" />
