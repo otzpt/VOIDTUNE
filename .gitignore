@@ -37,3 +37,8 @@ installer/*.wixpdb
 
 # Installer / release artefacts (shipped via Releases)
 VOIDTUNE.WinUI/installer/out/
+
+# Code-signing certificate — never commit, personal to this machine
+*.pfx
+*.p12
+codesign.pwd.txt

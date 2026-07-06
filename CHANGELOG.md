@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.12] - 2026-07-06 (WinUI 3 edition)
+
+### Added
+- **Code signing** — release builds (`installer/build.ps1`) now Authenticode-sign `VOIDTUNE.exe` and the MSI as part of the build, so Explorer's Digital Signatures tab shows a real publisher instead of nothing.
+- **Custom app icon** — the WinUI app, MSI, and Add/Remove Programs entry now embed the real VOIDTUNE brand icon (`Assets/voidtune.ico`, matching the website favicon) instead of the default WinUI icon.
+
 ## [0.8.11] - 2026-07-05 (WinUI 3 edition)
 
 ### Fixed — a real regression from 0.8.10's own Restore tools
