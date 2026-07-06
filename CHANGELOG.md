@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.13] - 2026-07-06 (WinUI 3 edition)
+
+### Added — automated test suite (`VOIDTUNE.WinUI.Tests`)
+- **Catalog integrity tests** — every tweak must have a unique ID, all required fields populated, and a real RevertCmd unless it's an explicitly allow-listed one-shot/restore action. Directly caught 4 tweaks that were byte-identical duplicates under different IDs (`p6`==`deb3`, `p2`==`deb2`, `stor30`==`pow5`, `lat4`==`stor5`) — all four removed.
+- **Dangerous-command blocklist** — a static check against every tweak's Apply/Revert/Fallback command for the exact class of mistake that caused the 0.8.10 regression (`powercfg -restoredefaultschemes`, bare `netsh int tcp/ip reset`) plus structurally similar footguns (`reg delete` without `/v`, `diskpart`, `vssadmin delete shadows`, `bcdedit`, bare `format`, embedded `shutdown /r`). A new tweak matching any of these fails the build instead of shipping.
+- **Apply/Revert round-trip tests** — actually run every toggleable tweak's Apply then Revert command against a real Windows machine. Gated behind `VOIDTUNE_DESTRUCTIVE_TESTS=1` so it only executes in a disposable environment (this repo's CI); a no-op everywhere else.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`) — every push/PR now builds the app, runs the full test suite (including the real Apply/Revert pass, safe on a throwaway CI VM), and validates that the release packaging pipeline (publish → portable ZIP → MSI) still builds end-to-end.
+
+### Added — 4 new tweaks, researched against AtlasOS/ReviOS/Microsoft docs and cross-checked for real mechanism + no known regressions before inclusion
+- **De-prioritize Background Processes (IFEO)** — lowers CPU/I-O scheduling priority for SearchIndexer, ctfmon, fontdrvhost and sihost via Image File Execution Options (the same documented mechanism Windows itself uses for foreground-app boosting).
+- **Disable Automatic Maintenance Wake** — stops nightly Automatic Maintenance from waking the PC from sleep; maintenance still runs when already awake.
+- **Disable Fault Tolerant Heap** — turns off FTH's per-app memory-allocation shims, a documented (Microsoft's own docs) measurable slowdown for apps with many small allocations; several game/render-software vendors independently recommend disabling it.
+- **Disable Explorer Auto Folder-Type Discovery** — stops Explorer from probing every folder's contents to guess its view template, removing disk churn and open-lag on large/networked folders.
+
+### Added — 4 new EXTREME tweaks (opt-in; each disables a real, sometimes-needed feature)
+- Disable Bluetooth Stack, Disable Print Spooler, Disable Sensor & Biometric Services, Disable Remote Desktop Services.
+
+### Rejected during research (documented for posterity — not added, and why)
+- **LowLevelHooksTimeout reduction** — looked promising secondhand, but verification showed the "optimized" value (1000ms) has been the Windows default since 10 version 1709 (placebo on any supported system), and it's specifically implicated in documented full-screen-game crash/flicker reports from another optimizer's users.
+- **DisablePagingExecutive / DisablePageCombining, Memory Compression disable** — all three trade *more RAM* for lower latency, directly opposite our low-RAM priority; same reasoning as the C-state/Force-All-Cores purge in 0.8.10.
+
 ## [0.8.12] - 2026-07-06 (WinUI 3 edition)
 
 ### Added

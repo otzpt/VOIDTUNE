@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install WiX v5
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build VOIDTUNE.WinUI
+        # -p:Platform=x64 -r win-x64 are required: the Windows App SDK's build targets error
+        # out ("requires a supported Windows architecture") without an explicit platform/RID.
+        run: dotnet build VOIDTUNE.WinUI/VOIDTUNE.WinUI.csproj -c Release -p:Platform=x64 -r win-x64 --self-contained false
+
+      - name: Run test suite (incl. real Apply/Revert against this disposable runner)
+        run: dotnet test VOIDTUNE.WinUI.Tests/VOIDTUNE.WinUI.Tests.csproj -c Release --logger "console;verbosity=normal"
+        env:
+          # Safe here specifically because this is a throwaway GitHub-hosted VM, not a dev
+          # machine — see the doc comment on ApplyRevertRoundTripTests for why this matters.
+          VOIDTUNE_DESTRUCTIVE_TESTS: "1"
+
+      - name: Validate the full release build (publish + portable ZIP + MSI)
+        # No signing cert is present in CI (codesign.pfx is gitignored/machine-local), so
+        # build.ps1 skips signing automatically and just proves the packaging pipeline itself
+        # works end-to-end — this is what would have caught the WiX icon-path bug found in 0.8.12
+        # before it reached a release build on a real machine.
+        shell: pwsh
+        run: ./VOIDTUNE.WinUI/installer/build.ps1 -Version ci-${{ github.run_number }}

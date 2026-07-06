@@ -1,10 +1,10 @@
-# VOIDTUNE v0.8.12
+# VOIDTUNE v0.8.13
 
 **Windows optimization suite for gamers and power users.**
 
 | Version | License | Platform | Current edition |
 |---------|---------|----------|-----------------|
-| 0.8.12 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
+| 0.8.13 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
 
 🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
@@ -12,9 +12,18 @@
 
 ## Editions
 
-- **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~165 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
+- **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~170 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
 - **VOIDTUNE One-Click (native C)** — a ~170 KB, zero-dependency automatic optimizer: [otzpt/Voidtune-one-click](https://github.com/otzpt/Voidtune-one-click). Hit "Optimize Now," done. No install, runs anywhere Windows runs.
 - **PowerShell + WPF (original)** — the original ps2exe edition at the repo root (`VOIDTUNE.ps1`, `core/`, `modules/`, `ui/`). Still functional; superseded by the WinUI app.
+
+## 🚀 What's New in v0.8.13 (WinUI 3 edition)
+
+- **Automated test suite** — catalog-integrity checks, a dangerous-command blocklist (the class of bug behind the 0.8.10 regression can no longer ship silently), and Apply/Revert round-trip tests that run for real in CI. Caught and fixed 4 duplicate tweaks already sitting in the catalog undetected
+- **GitHub Actions CI** — every push/PR now builds the app, runs the full test suite, and validates the release packaging (MSI + ZIP) before it can merge
+- **4 new tweaks**, sourced and cross-checked against AtlasOS/ReviOS/Microsoft docs: de-prioritize background processes (IFEO), stop Automatic Maintenance from waking the PC, disable Fault Tolerant Heap, disable Explorer's auto folder-type discovery
+- **4 new EXTREME tweaks** (opt-in, each disables a real feature): Bluetooth stack, Print Spooler, sensor/biometric services, Remote Desktop services
+
+> Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## 🚀 What's New in v0.8.12 (WinUI 3 edition)
 
@@ -147,14 +156,14 @@ VOIDTUNE is a free, open-source Windows optimizer and debloater built with Power
 
 ### Option A — MSI installer (recommended)
 
-1. Download **`VOIDTUNE-0.8.12-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
+1. Download **`VOIDTUNE-0.8.13-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
 2. Run it and follow the wizard.
 
 Installs to `Program Files`, adds Start Menu + Desktop shortcuts, and registers in Add/Remove Programs for a clean uninstall.
 
 ### Option B — Portable ZIP
 
-1. Download **`VOIDTUNE-0.8.12-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
+1. Download **`VOIDTUNE-0.8.13-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
 2. Extract it — **keep all files and folders together**.
 3. Run `VOIDTUNE.exe` (it auto-requests Administrator).
 
