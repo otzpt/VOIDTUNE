@@ -174,7 +174,7 @@
 
                             <ToggleSwitch Grid.Column="3" VerticalAlignment="Center" MinWidth="0"
                                           OnContent="" OffContent=""
-                                          IsOn="{x:Bind Applied, Mode=OneWay}" Tag="{x:Bind}" Toggled="Tweak_Toggled" />
+                                          IsOn="{x:Bind Applied, Mode=OneWay}" Toggled="Tweak_Toggled" />
                         </Grid>
                     </Border>
                 </DataTemplate>

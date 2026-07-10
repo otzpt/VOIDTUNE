@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.15] - 2026-07-08 (WinUI 3 edition)
+
+### Fixed — toggling one tweak could silently apply/revert a DIFFERENT one while scrolling
+- Tweaks, Startup, and Customization pages all identified "which item is this switch for" via `ToggleSwitch.Tag` (bound with `{x:Bind}`). During virtualized-list container recycling, WinUI can re-fire `Toggled` (from the `IsOn` binding refreshing for the recycled row) *before* that row's separate `Tag` binding has caught up — so the handler read the **previous** row's item from `Tag` while `IsOn` already reflected the **new** row, defeated the echo-guard (comparing two different tweaks' states), and applied/reverted the wrong entry. Field-reported as "toggles change tweaks that already had a state" while scrolling with tweaks already active. Fixed by reading `DataContext` instead of `Tag` — WinUI updates a container's `DataContext` atomically before any child bindings re-evaluate, so it can't go stale the way a sibling property binding can. Affects real system state, not just display, so this ships as an immediate follow-up to 0.8.14.
+
 ## [0.8.14] - 2026-07-07 (WinUI 3 edition)
 
 ### Added — automatic startup repair (recall system)

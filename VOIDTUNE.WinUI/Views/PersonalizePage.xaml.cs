@@ -55,7 +55,14 @@ public sealed partial class PersonalizePage : Page
     // (re)realized while scrolling, so we ignore events where the switch already matches state.
     private async void Toggle_Changed(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        if (sender is not ToggleSwitch ts || ts.Tag is not PersonalizeToggle t) return;
+        // DataContext, not Tag: during virtualized-grid container recycling, WinUI can re-fire
+        // Toggled (from the IsOn x:Bind refreshing) before a same-container Tag="{x:Bind}" has
+        // been re-evaluated for the new item — Tag briefly points at the PREVIOUS mod while IsOn
+        // already reflects the new one, so the echo-guard below compares mismatched objects and
+        // silently flips the WRONG mod while scrolling. DataContext updates atomically for the
+        // whole container before any child bindings re-evaluate, so it can't go stale like a peer
+        // property binding can (same bug class fixed on the Tweaks/Startup pages).
+        if (sender is not ToggleSwitch ts || ts.DataContext is not PersonalizeToggle t) return;
         bool on = ts.IsOn;
         if (on == t.Enabled) return;   // echo from binding / realization — not a user action
 

@@ -151,7 +151,14 @@ public sealed partial class TweaksPage : Page
     /// </summary>
     private async void Tweak_Toggled(object sender, RoutedEventArgs e)
     {
-        if (sender is not ToggleSwitch ts || ts.Tag is not Tweak t) return;
+        // DataContext, not Tag: during virtualized-list container recycling, WinUI can re-fire
+        // Toggled (from the IsOn x:Bind refreshing) before a same-container Tag="{x:Bind}" has
+        // been re-evaluated for the new item — Tag briefly points at the PREVIOUS row's tweak
+        // while IsOn already reflects the new one, so the echo-guard below compares mismatched
+        // objects, fails to recognize the echo, and applies/reverts the WRONG tweak while
+        // scrolling. DataContext is set atomically for the whole container before any child
+        // bindings re-evaluate, so it can't go stale the way a peer property binding can.
+        if (sender is not ToggleSwitch ts || ts.DataContext is not Tweak t) return;
         bool on = ts.IsOn;
         if (on == t.Applied) return;   // echo from binding / realization / recycling — not a user click
 

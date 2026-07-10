@@ -19,7 +19,7 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.14";
+    public const string CurrentVersion = "0.8.15";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
