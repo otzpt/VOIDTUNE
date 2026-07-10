@@ -19,7 +19,7 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.16";
+    public const string CurrentVersion = "0.8.17";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
@@ -124,8 +124,8 @@ public static class UpdateService
 
             if (isMsi)
             {
-                progress?.Report("Launching installer…");
-                Process.Start(new ProcessStartInfo("msiexec.exe", $"/i \"{file}\"") { UseShellExecute = true });
+                progress?.Report("Preparing update…");
+                LaunchMsiSwap(file);
             }
             else
             {
@@ -138,6 +138,45 @@ public static class UpdateService
         {
             return (false, $"Update failed: {ex.Message}");
         }
+    }
+
+    // Writes a helper script that waits for this process to exit, runs the MSI fully silently
+    // (no point showing the wizard again — the user already chose to update from inside the
+    // app), then relaunches. Waiting for our own exit first — rather than racing msiexec's file
+    // copy against Application.Current.Exit() returning — avoids a "file in use" install failure;
+    // the MSI's own util:CloseApplication is a second safety net, not the primary mechanism.
+    private static void LaunchMsiSwap(string msiPath)
+    {
+        string exe = Path.Combine("C:\\Program Files\\VOIDTUNE", "VOIDTUNE.exe");
+        try
+        {
+            using var k = Registry.LocalMachine.OpenSubKey(RegPath);
+            if (k?.GetValue("InstallPath") is string p && p.Length > 0)
+                exe = Path.Combine(p, "VOIDTUNE.exe");
+        }
+        catch { /* fall back to the default Program Files path */ }
+
+        int pid = Environment.ProcessId;
+        string script = Path.Combine(Path.GetTempPath(), "vt_msi_update.ps1");
+        string log = Path.Combine(Path.GetTempPath(), "vt_msi_update.log");
+
+        string body = string.Join("\n", new[]
+        {
+            "$ErrorActionPreference='SilentlyContinue'",
+            $"while (Get-Process -Id {pid} -EA SilentlyContinue) {{ Start-Sleep -Milliseconds 400 }}",
+            "Start-Sleep -Seconds 1",
+            // No -Verb RunAs: this script's own process already inherited VOIDTUNE.exe's
+            // elevated token (requireAdministrator manifest), so msiexec runs elevated too
+            // without a second UAC prompt popping up after the app has already closed.
+            $"Start-Process msiexec.exe -ArgumentList '/i \"{msiPath}\" /qn /norestart /l*v \"{log}\"' -Wait",
+            $"Remove-Item '{msiPath}' -Force",
+            $"if (Test-Path '{exe}') {{ Start-Process '{exe}' }}",
+        });
+        File.WriteAllText(script, body);
+
+        Process.Start(new ProcessStartInfo("powershell.exe",
+            $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{script}\"")
+        { UseShellExecute = true });
     }
 
     // Writes a helper script that waits for this process to exit, swaps the files and relaunches.

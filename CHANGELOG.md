@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.17] - 2026-07-10 (WinUI 3 edition)
+
+### Added — a real installer wizard (previously had none at all)
+- The MSI had zero authored UI — msiexec fell back to its bare default, no license disclosure, no way to launch VOIDTUNE after install. Added the standard WixUI_Minimal wizard (Welcome → License → Progress → Exit) via the WiX UI/Util extensions, with a GPL-3 license page and a **"Launch VOIDTUNE" checkbox on the finish page** (checked by default) that starts the app immediately after a fresh install — no more hunting for the Start Menu shortcut.
+- Added `util:CloseApplication` so the installer gracefully closes a running VOIDTUNE before touching its files instead of failing on a locked exe.
+- `build.ps1` now auto-installs the two required WiX extensions (`WixToolset.UI.wixext`, `WixToolset.Util.wixext`) if missing, so a fresh dev machine can still build the installer with zero manual setup.
+
+### Fixed — in-app updates now auto-launch VOIDTUNE when they finish
+- The MSI update path previously launched `msiexec /i` with full interactive UI, requiring the user to click through the wizard a second time (redundant — they already chose to update from inside the app) and never relaunched VOIDTUNE afterward. It now runs the same reliable wait-for-exit → silent install (`/qn`) → relaunch pattern the portable-ZIP update path already used, so both update paths now behave identically: no extra clicks, no closing themselves.
+
 ## [0.8.16] - 2026-07-08 (WinUI 3 edition)
 
 ### Fixed — extreme lag applying tweaks (self-inflicted by 0.8.14's own fallback feature)

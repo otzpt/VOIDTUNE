@@ -55,12 +55,23 @@ Remove-Item $zip -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($pub, $zip, 'Optimal', $false)
 
+Write-Host "==> Ensuring WiX UI/Util extensions are installed..."
+# -g (global/per-user cache): without it, extensions are cached per-directory and invisible to
+# `wix build` when run from a different CWD than `wix extension add` was.
+$installedExts = & $wix extension list -g 2>&1 | Out-String
+foreach ($ext in "WixToolset.UI.wixext", "WixToolset.Util.wixext") {
+    if ($installedExts -notmatch [regex]::Escape($ext)) {
+        & $wix extension add "$ext/5.0.2" -g | Out-Null
+    }
+}
+
 Write-Host "==> Building MSI..."
 $msi = Join-Path $out "VOIDTUNE-$Version-Setup.msi"
 Remove-Item $msi -ErrorAction SilentlyContinue
 Push-Location $PSScriptRoot
 try {
-    & $wix build "Package.wxs" -arch x64 -d "PublishDir=$pub" -o $msi
+    & $wix build "Package.wxs" -arch x64 -d "PublishDir=$pub" -o $msi `
+        -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext
     if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
 } finally {
     Pop-Location

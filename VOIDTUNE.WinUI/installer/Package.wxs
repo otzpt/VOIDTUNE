@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- VOIDTUNE WinUI installer. Build with WiX v5:  see build.ps1 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.16.0"
+<!-- VOIDTUNE WinUI installer. Build with WiX v5:  see build.ps1
+     UI extension (WixToolset.UI.wixext) and Util extension (WixToolset.Util.wixext) are
+     required to build this — build.ps1 adds them automatically if missing. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.17.0"
            UpgradeCode="7C9E6A2F-4B1D-4A8E-9F3C-2E6D5B8A1C40"
            Scope="perMachine" InstallerVersion="500">
 
@@ -16,6 +20,27 @@
          straight from the target exe, which now embeds Assets\voidtune.ico via ApplicationIcon. -->
     <Icon Id="VoidtuneIcon" SourceFile="..\Assets\voidtune.ico" />
     <Property Id="ARPPRODUCTICON" Value="VoidtuneIcon" />
+
+    <!-- Standard wizard UI (Welcome -> License -> Progress -> Exit). Previously this installer
+         had NO authored UI at all — msiexec fell back to its own bare default, no license
+         disclosure, no "Launch VOIDTUNE" option on finish. WixUI_Minimal is the right fit since
+         the install path is fixed (no directory-chooser step needed). -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <!-- Close a running VOIDTUNE before installing files, instead of failing on a locked exe. -->
+    <util:CloseApplication Id="CloseVoidtune" Target="VOIDTUNE.exe" CloseMessage="yes"
+                            RebootPrompt="no" ElevatedCloseMessage="yes" />
+
+    <!-- "Launch VOIDTUNE" checkbox on the finish page — checked by default, skipped entirely
+         for silent/quiet installs (the in-app updater runs msiexec /qn and relaunches itself). -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch VOIDTUNE" />
+    <Property Id="WixShellExecTarget" Value="[INSTALLFOLDER]VOIDTUNE.exe" />
+    <CustomAction Id="LaunchApplication" DllEntry="WixShellExec" Impersonate="yes" BinaryRef="Wix4UtilCA_X86" />
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    </UI>
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="VOIDTUNE" />
@@ -34,7 +59,7 @@
     <Component Id="RegistryEntries" Directory="INSTALLFOLDER" Guid="*">
       <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="InstallPath" Type="string"
                      Value="[INSTALLFOLDER]" KeyPath="yes" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.16" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.17" />
     </Component>
 
     <Component Id="StartMenuShortcut" Directory="ShortcutFolder" Guid="*">

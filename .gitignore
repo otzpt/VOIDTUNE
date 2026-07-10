@@ -20,6 +20,7 @@ $RECYCLE.BIN/
 installer/.wix/
 installer/.build/
 installer/*.wixpdb
+**/.wix/
 
 # Temp
 *.tmp

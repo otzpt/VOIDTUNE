@@ -13,7 +13,7 @@
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="6">
                     <TextBlock Text="VOIDTUNE Performance Suite" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock x:Name="VersionText" Text="v0.8.16 · WinUI 3 edition" FontFamily="Consolas"
+                    <TextBlock x:Name="VersionText" Text="v0.8.17 · WinUI 3 edition" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                     <TextBlock Text="A precision Windows optimization suite. Reversible tweaks, zero telemetry, open source under GPL-3."
                                Opacity="0.75" TextWrapping="Wrap" Margin="0,6,0,0" />

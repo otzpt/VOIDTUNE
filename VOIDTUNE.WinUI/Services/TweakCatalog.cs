@@ -37,7 +37,7 @@ public static class TweakCatalog
         string cpu = HardwareInfo.CpuVendor;
         string gpu = HardwareInfo.GpuVendor;
 
-        // ix1 "Intel Speed Shift EPP" and ix3 "Intel No SpeedStep" were REMOVED in 0.8.16 —
+        // ix1 "Intel Speed Shift EPP" and ix3 "Intel No SpeedStep" were REMOVED in 0.8.17 —
         // both wrote ValueMax/ValueMin onto the machine-wide *definition* of the PERFBOOSTMODE
         // setting (GUID be337238…, which is boost mode, not EPP — the tweak was mislabeled from
         // the start). ix1's ValueMax=0 clamped turbo boost OFF for every plan on every Intel
@@ -480,7 +480,7 @@ public static class TweakCatalog
         new() { Id="upd10", Category="Debloat", Tier=TweakTier.Safe, Name="Block Driver Updates in WU", Description="Stop Windows Update from silently replacing your GPU/chipset drivers with its own (often older) versions. You still get security updates; just not driver overwrites.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 0 /f & exit /b 0",
             RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 1 /f & exit /b 0" },
-        // 0.8.16: ux1 no longer touches HungAppTimeout or AutoEndTasks. HungAppTimeout=2000 +
+        // 0.8.17: ux1 no longer touches HungAppTimeout or AutoEndTasks. HungAppTimeout=2000 +
         // AutoEndTasks=1 made Windows auto-kill ANY app it considered hung for 2 seconds —
         // including Explorer during routine stalls (thumbnails, network folders, slow disks),
         // which showed up in the field as "Explorer randomly restarts itself". Same failure
@@ -513,7 +513,7 @@ public static class TweakCatalog
             ApplyCmd="sc config XblAuthManager start= disabled & sc config XblGameSave start= disabled & sc config XboxNetApiSvc start= disabled & sc config XboxGipSvc start= disabled & sc stop XblAuthManager & sc stop XblGameSave & sc stop XboxNetApiSvc & sc stop XboxGipSvc & exit /b 0",
             RevertCmd="sc config XblAuthManager start= demand & sc config XblGameSave start= demand & sc config XboxNetApiSvc start= demand & sc config XboxGipSvc start= demand & exit /b 0" },
 
-        // ── New in 0.8.16 — sourced from AtlasOS/ReviOS/Microsoft docs, cross-checked for
+        // ── New in 0.8.17 — sourced from AtlasOS/ReviOS/Microsoft docs, cross-checked for
         //    real mechanism + no known regressions before inclusion (see CHANGELOG).
         new() { Id="slim59", Category="Processes", Tier=TweakTier.Safe, Name="De-prioritize Background Processes (IFEO)", Description="Lower the CPU/I-O scheduling priority of SearchIndexer, ctfmon, fontdrvhost and sihost via Image File Execution Options — the same documented mechanism Windows itself uses for foreground-app boosting, just aimed the other way. These keep running (nothing is disabled) but yield CPU/disk to your game the moment it needs it.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SearchIndexer.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 5 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ctfmon.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ctfmon.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\fontdrvhost.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\fontdrvhost.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sihost.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sihost.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & exit /b 0",
@@ -538,7 +538,7 @@ public static class TweakCatalog
             ApplyCmd="sc config TermService start= disabled & sc config SessionEnv start= disabled & sc config UmRdpService start= disabled & sc stop TermService & sc stop SessionEnv & sc stop UmRdpService & exit /b 0",
             RevertCmd="sc config TermService start= demand & sc config SessionEnv start= demand & sc config UmRdpService start= demand & exit /b 0" },
 
-        // ── New in 0.8.16 — closing the process-count gap vs. Platinum+ and similar
+        // ── New in 0.8.17 — closing the process-count gap vs. Platinum+ and similar
         //    community optimizers: read their actual scripts, verified which of their
         //    service disables are genuinely Automatic-by-default (real footprint) vs.
         //    already Manual/trigger-start (would be a no-op, the slim12 lesson) before adding.
@@ -578,9 +578,9 @@ public static class TweakCatalog
                      "$k='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel'; 'NoLazyMode','DistributeTimers','GlobalTimerResolutionRequests','DPCTimeout' | ForEach-Object { Remove-ItemProperty $k -Name $_ -EA SilentlyContinue }; " +
                      "$g='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers'; 'HwSchMode','EnableVsyncLatencyUpdate','DisableVsyncLatencyUpdate','EnableMidGfxPreemption','EnableMidBufferPreemption','DisableDynamicPstate' | ForEach-Object { Remove-ItemProperty $g -Name $_ -EA SilentlyContinue }; " +
                      // Remove the PERFBOOSTMODE definition overrides written by the old ix1/ix3 tweaks
-                     // (removed in 0.8.16) — ValueMax=0 clamped turbo boost OFF machine-wide on Intel.
+                     // (removed in 0.8.17) — ValueMax=0 clamped turbo boost OFF machine-wide on Intel.
                      "$pb='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\54533251-82be-4824-96c1-47b60b740d00\\be337238-0d82-4146-a960-4f3749d470c7'; 'ValueMax','ValueMin' | ForEach-Object { Remove-ItemProperty $pb -Name $_ -EA SilentlyContinue }; " +
-                     // Remove the hung-app auto-kill pair written by pre-0.8.16 ux1 — it made Windows
+                     // Remove the hung-app auto-kill pair written by pre-0.8.17 ux1 — it made Windows
                      // restart Explorer whenever it stalled 2s (thumbnails, network folders).
                      "$dk='HKCU:\\Control Panel\\Desktop'; 'HungAppTimeout','AutoEndTasks' | ForEach-Object { Remove-ItemProperty $dk -Name $_ -EA SilentlyContinue }; " +
                      "$tp='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters'; 'TCPNoDelay','TcpTimedWaitDelay','MaxUserPort','DisableBandwidthThrottling' | ForEach-Object { Remove-ItemProperty $tp -Name $_ -EA SilentlyContinue }; " +
@@ -590,7 +590,7 @@ public static class TweakCatalog
                      // chat, game launchers). A "restore defaults" tool has no business doing that.
                      // Same safe, targeted settings reset the rst1 "Restore Network" tweak already uses.
                      "netsh int tcp set global autotuninglevel=normal | Out-Null; netsh int tcp set global ecncapability=enabled | Out-Null; netsh int tcp set global rsc=enabled | Out-Null; netsh int tcp set global congestionprovider=default | Out-Null; ipconfig /flushdns | Out-Null; exit 0", RevertCmd="" },
-        new() { Id="rst7", Category="Restore", Tier=TweakTier.Safe, NeedsReboot=true, Name="Restore CPU Turbo Boost", Description="Removes a leftover from older VOIDTUNE versions (\"Intel Speed Shift EPP\" / \"Intel No SpeedStep\", both removed in 0.8.16) that clamped the turbo-boost setting's allowed range machine-wide — capable of disabling turbo on every power plan. If your CPU never clocks above its base frequency under load (check the multiplier in CPU-Z), run this and reboot.",
+        new() { Id="rst7", Category="Restore", Tier=TweakTier.Safe, NeedsReboot=true, Name="Restore CPU Turbo Boost", Description="Removes a leftover from older VOIDTUNE versions (\"Intel Speed Shift EPP\" / \"Intel No SpeedStep\", both removed in 0.8.17) that clamped the turbo-boost setting's allowed range machine-wide — capable of disabling turbo on every power plan. If your CPU never clocks above its base frequency under load (check the multiplier in CPU-Z), run this and reboot.",
             ApplyCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /f 2>nul & reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /f 2>nul & powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="" },
 
     };
