@@ -61,7 +61,7 @@
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
                         CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.15 · WinUI 3" FontSize="10" FontFamily="Consolas"
+                    <TextBlock Text="v0.8.16 · WinUI 3" FontSize="10" FontFamily="Consolas"
                                Foreground="{StaticResource BrandVioletSoft}" />
                 </Border>
             </StackPanel>

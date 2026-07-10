@@ -124,43 +124,60 @@ public sealed class TweakEngine
         // thread, so we never raise PropertyChanged from a worker thread.
         var results = await RunBatchAsync(list, t => t.ApplyCmd, progress, "Applying");
 
+        // Layer 1 — outcome over exit code: netsh/sc/reg return non-zero for benign reasons.
+        // If the command "failed" but the system already shows the desired state, it's applied.
+        // No awaits in this pass, so a run of failures can't add sequential latency here.
+        var outcome = new Dictionary<Tweak, (bool Ok, bool ExitOk, string Output)>();
+        var fallbackCmd = new Dictionary<Tweak, string>();
+        foreach (var (t, success, output) in results)
+        {
+            bool applied = success || TweakVerifier.IsApplied(t) == true;
+            if (!applied)
+            {
+                string fb = !string.IsNullOrEmpty(t.FallbackCmd) ? t.FallbackCmd : FallbackSynth.ForCommand(t.ApplyCmd);
+                if (!string.IsNullOrEmpty(fb)) { fallbackCmd[t] = fb; continue; }
+            }
+            outcome[t] = (applied, success, output);
+        }
+
+        // Layer 2 — second method: the tweak's explicit FallbackCmd, or (for service tweaks) a
+        // synthesized registry equivalent of its sc-config calls — SCM blocks the live change on
+        // some systems while the registry Start value still converges at reboot. Every fallback
+        // runs CONCURRENTLY here (same bounded batch as layer 1), not one at a time in a blocking
+        // loop — with 175+ tweaks, a handful of legitimate failures used to add many seconds of
+        // dead time at the tail of every apply while each retried sequentially, one process spawn
+        // at a time (PowerShell alone costs 300ms-1s+ to start).
+        if (fallbackCmd.Count > 0)
+        {
+            var retryList = fallbackCmd.Keys.ToList();
+            var fbResults = await RunBatchAsync(retryList, t => fallbackCmd[t], progress, "Retrying");
+            foreach (var (t, fbSuccess, fbOutput) in fbResults)
+            {
+                Log?.Invoke($"  retrying via fallback: {t.Name}");
+                bool applied = fbSuccess || TweakVerifier.IsApplied(t) == true;
+                outcome[t] = (applied, fbSuccess, fbOutput);
+            }
+        }
+
         int ok = 0, fail = 0;
         var failures = new List<(Tweak, string)>();
         var logEntries = new List<(Tweak, bool, string)>();
-        foreach (var (t, success, output) in results)
+        foreach (var t in list)
         {
+            if (!outcome.TryGetValue(t, out var o)) continue;
             Log?.Invoke($"Applying: {t.Name}");
-
-            // Layer 1 — outcome over exit code: netsh/sc/reg return non-zero for benign reasons.
-            // If the command "failed" but the system already shows the desired state, it's applied.
-            bool applied = success || TweakVerifier.IsApplied(t) == true;
-
-            // Layer 2 — second method: the tweak's explicit FallbackCmd, or (for service tweaks)
-            // a synthesized registry equivalent of its sc-config calls — SCM blocks the live
-            // change on some systems while the registry Start value still converges at reboot.
-            if (!applied)
-            {
-                string fallback = !string.IsNullOrEmpty(t.FallbackCmd) ? t.FallbackCmd : FallbackSynth.ForCommand(t.ApplyCmd);
-                if (!string.IsNullOrEmpty(fallback))
-                {
-                    Log?.Invoke($"  retrying via fallback: {t.Name}");
-                    var fb = await CommandRunner.ExecAsync(fallback);
-                    applied = fb.Ok || TweakVerifier.IsApplied(t) == true;
-                }
-            }
-
-            if (applied)
+            if (o.Ok)
             {
                 t.Applied = true; ok++;
-                Log?.Invoke(success ? $"  OK  {t.Name}" : $"  OK (verified)  {t.Name}");
-                logEntries.Add((t, true, output));
+                Log?.Invoke(o.ExitOk ? $"  OK  {t.Name}" : $"  OK (verified)  {t.Name}");
+                logEntries.Add((t, true, o.Output));
             }
             else
             {
                 fail++;
-                Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}");
-                failures.Add((t, output));
-                logEntries.Add((t, false, output));
+                Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(o.Output)}");
+                failures.Add((t, o.Output));
+                logEntries.Add((t, false, o.Output));
             }
         }
         LastApplyFailures = failures;
@@ -179,31 +196,44 @@ public sealed class TweakEngine
         var withCmd = list.Where(t => !string.IsNullOrEmpty(t.RevertCmd)).ToList();
         var results = await RunBatchAsync(withCmd, t => t.RevertCmd, progress, "Reverting");
 
-        int ok = 0, fail = 0;
+        // Same outcome-based fallback as apply: verified-gone beats a lying exit code. No awaits
+        // in this pass — see ApplyAsync for why (a run of failures must not add sequential delay).
+        var reverted = new HashSet<Tweak>();
+        var fallbackCmd = new Dictionary<Tweak, string>();
         foreach (var (t, success, output) in results)
         {
-            Log?.Invoke($"Reverting: {t.Name}");
-            // Same outcome-based fallback as apply: verified-gone beats a lying exit code.
-            bool reverted = success || TweakVerifier.IsApplied(t) == false;
+            bool ok = success || TweakVerifier.IsApplied(t) == false;
+            if (ok) { reverted.Add(t); continue; }
 
             // Same second-method safety net as apply — a revert that silently fails is worse
             // than an apply that fails, because the user believes they're back to stock.
-            if (!reverted)
+            string fb = FallbackSynth.ForCommand(t.RevertCmd);
+            if (!string.IsNullOrEmpty(fb)) fallbackCmd[t] = fb;
+        }
+
+        // Every fallback runs concurrently (bounded), same reasoning as ApplyAsync — one at a
+        // time in a blocking loop was the actual source of the "extreme lag" field report.
+        if (fallbackCmd.Count > 0)
+        {
+            var retryList = fallbackCmd.Keys.ToList();
+            var fbResults = await RunBatchAsync(retryList, t => fallbackCmd[t], progress, "Retrying");
+            foreach (var (t, fbSuccess, _) in fbResults)
             {
-                string fallback = FallbackSynth.ForCommand(t.RevertCmd);
-                if (!string.IsNullOrEmpty(fallback))
-                {
-                    Log?.Invoke($"  retrying revert via fallback: {t.Name}");
-                    var fb = await CommandRunner.ExecAsync(fallback);
-                    reverted = fb.Ok || TweakVerifier.IsApplied(t) == false;
-                }
+                Log?.Invoke($"  retrying revert via fallback: {t.Name}");
+                if (fbSuccess || TweakVerifier.IsApplied(t) == false) reverted.Add(t);
             }
-            if (reverted) ok++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
+        }
+
+        int ok2 = 0, fail = 0;
+        foreach (var (t, _, output) in results)
+        {
+            Log?.Invoke($"Reverting: {t.Name}");
+            if (reverted.Contains(t)) ok2++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
         }
         // Every requested tweak is marked reverted, even the no-op (empty RevertCmd) ones.
         foreach (var t in list) { t.Applied = false; t.Selected = false; }
         SaveState();
-        return (ok, fail);
+        return (ok2, fail);
     }
 
     /// <summary>

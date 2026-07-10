@@ -29,7 +29,7 @@ public static class RecallRepairService
     });
 
     /// <summary>
-    /// ix1/ix3 (removed 0.8.15) wrote ValueMax=0 / ValueMin=100 onto the machine-wide
+    /// ix1/ix3 (removed 0.8.16) wrote ValueMax=0 / ValueMin=100 onto the machine-wide
     /// PERFBOOSTMODE definition, clamping CPU turbo boost off across every power plan.
     /// Those exact values at that exact key are our damage signature — no stock Windows
     /// install has them, and deleting them restores the Windows-default range either way.
@@ -60,7 +60,7 @@ public static class RecallRepairService
     }
 
     /// <summary>
-    /// Pre-0.8.15 ux1 set HungAppTimeout=2000 + AutoEndTasks=1, which made Windows auto-kill
+    /// Pre-0.8.16 ux1 set HungAppTimeout=2000 + AutoEndTasks=1, which made Windows auto-kill
     /// Explorer during routine 2-second stalls. Only repaired when the ux1 tweak is recorded
     /// as applied — this exact value pair can also be set intentionally by other tools, and we
     /// only clean up our own writes.

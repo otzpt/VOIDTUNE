@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.16] - 2026-07-08 (WinUI 3 edition)
+
+### Fixed — extreme lag applying tweaks (self-inflicted by 0.8.14's own fallback feature)
+- The self-healing fallback retries added in 0.8.14 ran **sequentially** — each failed tweak's fallback was awaited one at a time in a blocking loop, right after the fast parallel main batch had already finished, with no progress-bar feedback during the wait. Each retry spawns a process (PowerShell alone costs 300ms-1s+ to start), so any run with a handful of legitimate failures — more likely now with 175+ tweaks — added many seconds of silent hang at the tail of every Apply/Revert. Both loops now run all fallback retries concurrently through the same bounded-parallelism batching as the main pass, matching the speed of every other bulk operation in the app.
+
 ## [0.8.15] - 2026-07-08 (WinUI 3 edition)
 
 ### Fixed — toggling one tweak could silently apply/revert a DIFFERENT one while scrolling
