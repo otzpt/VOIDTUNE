@@ -51,8 +51,14 @@ public sealed class TweakEngine
     {
         if (_initialized) return;
         _initialized = true;
+        // Recall repair runs FIRST — it removes damage signatures left by tweaks older versions
+        // shipped and later recalled, before state reconciliation reads the registry.
+        try { await RecallRepairService.RunAsync(); } catch { /* best-effort */ }
         try { await Task.Run(LoadState); } catch { /* corrupt reg / access — keep saved state */ }
-        try { if (AppSettingsStore.AutoGameBoost) GameWatcherService.Start(); } catch { /* never block startup */ }
+        try { if (AppSettingsStore.AutoGameBoost || AppSettingsStore.GameTimePowerPlan) GameWatcherService.Start(); } catch { /* never block startup */ }
+
+        foreach (string repair in RecallRepairService.RepairsDone)
+            Log?.Invoke("Startup repair: " + repair);
     }
 
     /// <summary>Lets engines (game watcher etc.) write into the live DevTools log.</summary>
@@ -87,6 +93,13 @@ public sealed class TweakEngine
 
     public int AppliedCount => Tweaks.Count(t => t.Applied);
 
+    /// <summary>The failed tweaks (with their raw command output) from the most recent ApplyAsync
+    /// call, so the UI can show exactly what went wrong instead of just a count.</summary>
+    public IReadOnlyList<(Tweak Tweak, string Output)> LastApplyFailures { get; private set; } = Array.Empty<(Tweak, string)>();
+
+    /// <summary>Path to the log file written for the most recent apply, if anything failed ("" otherwise).</summary>
+    public string LastApplyLogPath { get; private set; } = "";
+
     public IEnumerable<string> Categories =>
         Tweaks.Select(t => t.Category).Distinct();
 
@@ -112,6 +125,8 @@ public sealed class TweakEngine
         var results = await RunBatchAsync(list, t => t.ApplyCmd, progress, "Applying");
 
         int ok = 0, fail = 0;
+        var failures = new List<(Tweak, string)>();
+        var logEntries = new List<(Tweak, bool, string)>();
         foreach (var (t, success, output) in results)
         {
             Log?.Invoke($"Applying: {t.Name}");
@@ -120,21 +135,36 @@ public sealed class TweakEngine
             // If the command "failed" but the system already shows the desired state, it's applied.
             bool applied = success || TweakVerifier.IsApplied(t) == true;
 
-            // Layer 2 — second method: run the tweak's FallbackCmd, then re-check the real state.
-            if (!applied && !string.IsNullOrEmpty(t.FallbackCmd))
+            // Layer 2 — second method: the tweak's explicit FallbackCmd, or (for service tweaks)
+            // a synthesized registry equivalent of its sc-config calls — SCM blocks the live
+            // change on some systems while the registry Start value still converges at reboot.
+            if (!applied)
             {
-                Log?.Invoke($"  retrying via fallback: {t.Name}");
-                var fb = await CommandRunner.ExecAsync(t.FallbackCmd);
-                applied = fb.Ok || TweakVerifier.IsApplied(t) == true;
+                string fallback = !string.IsNullOrEmpty(t.FallbackCmd) ? t.FallbackCmd : FallbackSynth.ForCommand(t.ApplyCmd);
+                if (!string.IsNullOrEmpty(fallback))
+                {
+                    Log?.Invoke($"  retrying via fallback: {t.Name}");
+                    var fb = await CommandRunner.ExecAsync(fallback);
+                    applied = fb.Ok || TweakVerifier.IsApplied(t) == true;
+                }
             }
 
             if (applied)
             {
                 t.Applied = true; ok++;
                 Log?.Invoke(success ? $"  OK  {t.Name}" : $"  OK (verified)  {t.Name}");
+                logEntries.Add((t, true, output));
             }
-            else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
+            else
+            {
+                fail++;
+                Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}");
+                failures.Add((t, output));
+                logEntries.Add((t, false, output));
+            }
         }
+        LastApplyFailures = failures;
+        LastApplyLogPath = fail > 0 ? ApplyLogService.WriteLog("apply", logEntries) : "";
         SaveState();
         return (ok, fail);
     }
@@ -155,6 +185,19 @@ public sealed class TweakEngine
             Log?.Invoke($"Reverting: {t.Name}");
             // Same outcome-based fallback as apply: verified-gone beats a lying exit code.
             bool reverted = success || TweakVerifier.IsApplied(t) == false;
+
+            // Same second-method safety net as apply — a revert that silently fails is worse
+            // than an apply that fails, because the user believes they're back to stock.
+            if (!reverted)
+            {
+                string fallback = FallbackSynth.ForCommand(t.RevertCmd);
+                if (!string.IsNullOrEmpty(fallback))
+                {
+                    Log?.Invoke($"  retrying revert via fallback: {t.Name}");
+                    var fb = await CommandRunner.ExecAsync(fallback);
+                    reverted = fb.Ok || TweakVerifier.IsApplied(t) == false;
+                }
+            }
             if (reverted) ok++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
         }
         // Every requested tweak is marked reverted, even the no-op (empty RevertCmd) ones.

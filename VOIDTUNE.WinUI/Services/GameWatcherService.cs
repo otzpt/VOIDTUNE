@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace VOIDTUNE.WinUI.Services;
@@ -41,6 +42,7 @@ public static class GameWatcherService
         }
         // undo any active boost so "off" really means back-to-default
         int n = VoidSchedulerService.Instance.RestoreAll();
+        RestorePowerPlanNow();
         TweakEngine.Instance.EmitLog($"Auto Game Boost: off{(n > 0 ? $" — restored {n} processes" : "")}.");
     }
 
@@ -51,14 +53,21 @@ public static class GameWatcherService
         {
             var sched = VoidSchedulerService.Instance;
 
-            if (sched.IsActive)
+            // A game is already being handled (boosted and/or power-switched): wait for it to
+            // exit, then restore everything automatically.
+            int watched = sched.IsActive ? sched.BoostedGamePid : _powerGamePid;
+            if (watched > 0)
             {
-                // boosted game still alive? if not, restore everything automatically
-                if (!IsAlive(sched.BoostedGamePid))
+                if (!IsAlive(watched))
                 {
-                    string? name = sched.BoostedGameName;
-                    int n = sched.RestoreAll();
-                    TweakEngine.Instance.EmitLog($"Auto Game Boost: {name} closed — restored {n} processes.");
+                    if (sched.IsActive)
+                    {
+                        string? name = sched.BoostedGameName;
+                        int n = sched.RestoreAll();
+                        TweakEngine.Instance.EmitLog($"Auto Game Boost: {name} closed — restored {n} processes.");
+                    }
+                    RestorePowerPlanNow();
+                    _powerGamePid = 0;
                 }
                 return;
             }
@@ -66,14 +75,86 @@ public static class GameWatcherService
             int pid = DetectFullscreenGame();
             if (pid <= 0) return;
 
-            // pushBackground:false — never move other processes onto a core subset. That crammed
-            // background apps (incl. the game's own helpers, ShareX, browsers) onto a few cores and
-            // hurt FPS/hotkeys. The boost is now purely High priority + EcoQoS off on the game.
-            var (ok, msg) = sched.BoostGame(pid, pushBackground: false);
-            if (ok) TweakEngine.Instance.EmitLog("Auto Game Boost: " + msg);
+            if (AppSettingsStore.AutoGameBoost)
+            {
+                // pushBackground:false — never move other processes onto a core subset. That crammed
+                // background apps (incl. the game's own helpers, ShareX, browsers) onto a few cores and
+                // hurt FPS/hotkeys. The boost is now purely High priority + EcoQoS off on the game.
+                var (ok, msg) = sched.BoostGame(pid, pushBackground: false);
+                if (ok) TweakEngine.Instance.EmitLog("Auto Game Boost: " + msg);
+            }
+
+            if (AppSettingsStore.GameTimePowerPlan)
+            {
+                _powerGamePid = pid;
+                SwitchToVoidPlan();
+            }
         }
         catch { /* the watcher must never crash the app */ }
         finally { Interlocked.Exchange(ref _ticking, 0); }
+    }
+
+    // ── game-time power plan ────────────────────────────────────────────────
+    // The Bitsum-recommended pattern: run the aggressive plan only WHILE a game is running,
+    // instead of 24/7 — desktops get max clocks during play, and idle/browsing keeps normal
+    // power draw and heat. The VOIDTUNE plan itself is hardware-aware (Balanced-based on
+    // laptops), so this switch is safe on both.
+
+    private static int _powerGamePid;
+    private static string? _savedSchemeGuid;
+    private static bool _warnedNoPlan;
+    private static readonly Regex SchemeGuid = new(@"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    private static void SwitchToVoidPlan()
+    {
+        try
+        {
+            var m = Regex.Match(RunPowercfg("-list"), SchemeGuid + @"(?=[^\r\n]*\(VOIDTUNE Performance\))");
+            if (!m.Success)
+            {
+                if (!_warnedNoPlan)
+                {
+                    _warnedNoPlan = true;
+                    TweakEngine.Instance.EmitLog("Game-Time Power Plan: the \"VOIDTUNE Power Plan\" tweak isn't applied — nothing to switch to.");
+                }
+                return;
+            }
+
+            var active = SchemeGuid.Match(RunPowercfg("-getactivescheme"));
+            if (!active.Success || string.Equals(active.Value, m.Value, StringComparison.OrdinalIgnoreCase)) return;
+
+            _savedSchemeGuid = active.Value;
+            RunPowercfg("-setactive " + m.Value);
+            TweakEngine.Instance.EmitLog("Game-Time Power Plan: switched to VOIDTUNE Performance for the game.");
+        }
+        catch { /* power switching is best-effort; never disturb the watcher */ }
+    }
+
+    /// <summary>Puts the pre-game power plan back, if we switched. Safe to call any time.</summary>
+    public static void RestorePowerPlanNow()
+    {
+        try
+        {
+            string? saved = Interlocked.Exchange(ref _savedSchemeGuid, null);
+            if (saved is null) return;
+            RunPowercfg("-setactive " + saved);
+            TweakEngine.Instance.EmitLog("Game-Time Power Plan: restored your previous power plan.");
+        }
+        catch { /* best-effort */ }
+    }
+
+    private static string RunPowercfg(string args)
+    {
+        var psi = new ProcessStartInfo("powercfg", args)
+        {
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        using var p = Process.Start(psi)!;
+        string output = p.StandardOutput.ReadToEnd();
+        p.WaitForExit(5000);
+        return output;
     }
 
     // ── fullscreen game detection ───────────────────────────────────────────

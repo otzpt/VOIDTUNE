@@ -53,6 +53,42 @@
 
             <TextBlock Text="Scores are relative to this machine and meant for before/after tweak comparison, not cross-system ranking."
                        Opacity="0.5" FontSize="12" TextWrapping="Wrap" />
+
+            <!-- ── Tweak Validator: sustained stress A/B ─────────────────────── -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="22,18" Margin="0,10,0,0">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Tweak Validator" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock FontFamily="Consolas" FontSize="11.5" Opacity="0.6" TextWrapping="Wrap"
+                                   Text="5 × 45s sustained all-core runs — long enough to heat-soak, repeated enough to beat luck. Run a baseline, apply your tweaks (reboot if asked), then run the comparison: you get a statistical verdict, including a thermal-throttle check." />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="BaselineBtn" Click="Baseline_Click" Style="{ThemeResource AccentButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE9D9;" FontSize="14" />
+                                <TextBlock Text="Run baseline (5×)" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="CompareBtn" Click="Compare_Click" IsEnabled="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE9D2;" FontSize="14" />
+                                <TextBlock Text="Run comparison (5×)" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="CancelStressBtn" Click="CancelStress_Click" Visibility="Collapsed" Content="Cancel" />
+                        <Button x:Name="ClearBaselineBtn" Click="ClearBaseline_Click" IsEnabled="False" Content="Clear baseline" />
+                    </StackPanel>
+
+                    <ProgressBar x:Name="StressBar" Minimum="0" Maximum="100" Visibility="Collapsed" />
+                    <TextBlock x:Name="StressStatus" FontFamily="Consolas" FontSize="12" Opacity="0.7" Visibility="Collapsed" />
+
+                    <TextBlock x:Name="BaselineInfo" FontFamily="Consolas" FontSize="12.5" TextWrapping="Wrap" Visibility="Collapsed" />
+                    <InfoBar x:Name="VerdictBar" IsOpen="False" IsClosable="True" />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>

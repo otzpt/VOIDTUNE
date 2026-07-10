@@ -37,13 +37,14 @@ public static class TweakCatalog
         string cpu = HardwareInfo.CpuVendor;
         string gpu = HardwareInfo.GpuVendor;
 
-        if (cpu == "Intel")
-        {
-            arch.Add(new() { Id="ix1", Category="CPU", Tier=TweakTier.Safe, Name="Intel Speed Shift EPP", Description="[INTEL] Enable Speed Shift energy/performance preference.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /t REG_DWORD /d 100 /f" });
-            arch.Add(new() { Id="ix3", Category="CPU", Tier=TweakTier.Extreme, Name="Intel No SpeedStep", Description="[INTEL] Keep all cores at max frequency.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /t REG_DWORD /d 100 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /t REG_DWORD /d 0 /f" });
-        }
+        // ix1 "Intel Speed Shift EPP" and ix3 "Intel No SpeedStep" were REMOVED in 0.8.14 —
+        // both wrote ValueMax/ValueMin onto the machine-wide *definition* of the PERFBOOSTMODE
+        // setting (GUID be337238…, which is boost mode, not EPP — the tweak was mislabeled from
+        // the start). ix1's ValueMax=0 clamped turbo boost OFF for every plan on every Intel
+        // machine as a SAFE-tier default; field-confirmed as a plan-independent FPS deficit on
+        // an i7-8750H (Balanced only recovered half the lost FPS until this override was
+        // deleted). rst7 below removes the stale overrides for anyone who ever applied them.
+        // Proper boost/EPP handling now lives in the VOIDTUNE Power Plan (pow10).
         if (cpu == "AMD")
         {
             arch.Add(new() { Id="ax1", Category="CPU", Tier=TweakTier.Safe, Name="AMD CPPC Perf", Description="[AMD] Set Collaborative Processor Performance to max.",
@@ -53,8 +54,18 @@ public static class TweakCatalog
         }
         if (gpu == "NVIDIA")
         {
-            arch.Add(new() { Id="nx1", Category="GPU", Tier=TweakTier.Safe, Name="NVIDIA Max Performance", Description="[NVIDIA] Force prefer-maximum-performance power mode.",
-                ApplyCmd=@"reg add ""HKCU\Software\NVIDIA Corporation\Global\NvCplApi\Policies"" /v OverrideAdaptiveThreshold /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKCU\Software\NVIDIA Corporation\Global\NvCplApi\Policies"" /v OverrideAdaptiveThreshold /f" });
+            if (!HardwareInfo.IsLaptop)
+            {
+                // Desktop-only: this overrides NVIDIA's adaptive power state so the GPU sits at
+                // max P-state continuously instead of backing off between demanding frames/scenes.
+                // Confirmed same failure mode as pow7 (CPU): on a laptop's shared/limited thermal
+                // budget this removes the GPU's own recovery window, so it throttles *harder* under
+                // sustained load — a friend's GTX 1050 laptop hit 97C (throttle territory) running
+                // hot, and switching the whole system to the Windows-recommended Balanced power plan
+                // (letting the OS manage thermals again) gained ~100 FPS back over a "max performance" plan.
+                arch.Add(new() { Id="nx1", Category="GPU", Tier=TweakTier.Safe, Name="NVIDIA Max Performance", Description="[DESKTOP] Force prefer-maximum-performance power mode. Desktop-only — on a laptop this keeps the GPU at max power state with no thermal recovery window, causing worse throttling under sustained load, not better FPS.",
+                    ApplyCmd=@"reg add ""HKCU\Software\NVIDIA Corporation\Global\NvCplApi\Policies"" /v OverrideAdaptiveThreshold /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKCU\Software\NVIDIA Corporation\Global\NvCplApi\Policies"" /v OverrideAdaptiveThreshold /f" });
+            }
             arch.Add(new() { Id="nx2", Category="GPU", Tier=TweakTier.Safe, Name="NVIDIA No Telemetry", Description="[NVIDIA] Disable NVIDIA telemetry service and reporting.",
                 ApplyCmd=@"sc config NvTelemetryContainer start= disabled & sc stop NvTelemetryContainer & reg add ""HKLM\SOFTWARE\NVIDIA Corporation\NvControlPanel2\Client"" /v OptInOrOutPreference /t REG_DWORD /d 0 /f & exit /b 0", RevertCmd="sc config NvTelemetryContainer start= auto & exit /b 0" });
             arch.Add(new() { Id="nx3", Category="GPU", Tier=TweakTier.Safe, Name="NVIDIA Shader Cache", Description="[NVIDIA] Ensure shader disk cache is on for faster loads.",
@@ -68,8 +79,14 @@ public static class TweakCatalog
         }
         if (gpu == "AMD")
         {
-            arch.Add(new() { Id="agx1", Category="GPU", Tier=TweakTier.Safe, Name="AMD GPU Deep Sleep Off", Description="[AMD GPU] Disable GPU core deep sleep for lower latency.",
-                ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000"" /v PP_SclkDeepSleepDisable /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000"" /v PP_SclkDeepSleepDisable /t REG_DWORD /d 0 /f" });
+            if (!HardwareInfo.IsLaptop)
+            {
+                // Desktop-only — same reasoning as nx1 above: disabling the GPU core's deep-sleep
+                // state removes its thermal recovery window, which backfires on a laptop's shared
+                // CPU/GPU thermal budget.
+                arch.Add(new() { Id="agx1", Category="GPU", Tier=TweakTier.Safe, Name="AMD GPU Deep Sleep Off", Description="[DESKTOP] Disable GPU core deep sleep for lower latency. Desktop-only — on a laptop this removes the GPU's thermal recovery window and causes worse throttling under sustained load.",
+                    ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000"" /v PP_SclkDeepSleepDisable /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000"" /v PP_SclkDeepSleepDisable /t REG_DWORD /d 0 /f" });
+            }
             arch.Add(new() { Id="agx2", Category="GPU", Tier=TweakTier.Safe, Name="AMD Chill Off", Description="[AMD GPU] Disable Radeon Chill frame limiter.",
                 ApplyCmd=@"reg add ""HKCU\Software\ATI\ACE\Settings\ADL\CWDDEPM"" /v ChillEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKCU\Software\ATI\ACE\Settings\ADL\CWDDEPM"" /v ChillEnabled /t REG_DWORD /d 1 /f" });
             arch.Add(new() { Id="agx3", Category="GPU", Tier=TweakTier.Extreme, Name="AMD ULPS Off", Description="[AMD GPU] Disable Ultra Low Power State, reduces stutter.",
@@ -81,6 +98,50 @@ public static class TweakCatalog
         {
             arch.Add(new() { Id="lx1", Category="Power", Tier=TweakTier.Safe, Name="Laptop AC Performance", Description="[LAPTOP] Maximum performance on AC power.",
                 ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 100 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTPOL 50 && powercfg -setactive scheme_current" });
+
+            // VOIDTUNE Power Plan — laptop profile. Built from real evidence, not folklore:
+            // a field test on an i7-8750H Legion showed Balanced BEAT a max-performance plan by
+            // ~100 FPS (thermal headroom > pinned clocks on cooling-limited hardware), so the
+            // laptop plan starts from a BALANCED duplicate and adds only the settings that
+            // reduce latency without generating sustained heat: core parking off (wake latency;
+            // thermally neutral — best-effort: many systems declare CPMINCORES range 0-0 because
+            // parking is already OS-managed there, and the write failing is benign, verified on
+            // real hardware), USB selective suspend off, PCIe ASPM off. All writes are
+            // AC-only (setacvalueindex) so battery behavior is untouched. Thermal governors
+            // (min processor state, boost mode, EPP) are deliberately LEFT AT BALANCED DEFAULTS.
+            // The plan is detected by the name we set ourselves, so it's locale-independent and
+            // never duplicated on re-apply (the pow3 lesson).
+            arch.Add(new() { Id="pow10", Category="Power", Tier=TweakTier.Safe, Name="VOIDTUNE Power Plan", Description="[LAPTOP] Create + activate the VOIDTUNE plan: Balanced's proven thermal behavior (a real laptop gained ~100 FPS going back to Balanced from max-performance) plus the latency fixes that don't generate heat — core parking off, USB selective suspend off, PCIe link power off. AC-only; battery behavior untouched.",
+                ApplyCmd=@"PS:$ErrorActionPreference='SilentlyContinue'; $list=(powercfg -list | Out-String); $m=[regex]::Match($list,'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[^\r\n]*\(VOIDTUNE Performance\)'); if($m.Success){$g=$m.Groups[1].Value}else{ $o=(powercfg -duplicatescheme 381b4222-f694-41f0-9685-ff5bb260df2e | Out-String); $g=[regex]::Match($o,'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}').Value; if($g){ powercfg -changename $g 'VOIDTUNE Performance' 'Hardware-aware plan by VOIDTUNE (laptop profile: Balanced thermals + latency fixes)' | Out-Null } }; if(-not $g){exit 1}; powercfg -setacvalueindex $g SUB_PROCESSOR CPMINCORES 100 | Out-Null; powercfg -setacvalueindex $g 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0 | Out-Null; powercfg -setacvalueindex $g SUB_PCIEXPRESS ASPM 0 | Out-Null; powercfg -setactive $g; exit 0",
+                RevertCmd=@"PS:$ErrorActionPreference='SilentlyContinue'; powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e | Out-Null; $list=(powercfg -list | Out-String); $m=[regex]::Match($list,'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[^\r\n]*\(VOIDTUNE Performance\)'); if($m.Success){ powercfg -delete $m.Groups[1].Value | Out-Null }; exit 0" });
+        }
+        else
+        {
+            // Desktop-only: forcing PROCTHROTTLEMIN to 100 means the CPU never idles down, which
+            // is fine with real case/cooler airflow but actively harmful on a laptop — it removes
+            // the chip's thermal recovery window, so it soaks hotter and throttles *harder* under
+            // sustained load than it would otherwise. Confirmed as a real regression (350->140 FPS
+            // in Minecraft on an Intel 8th-gen + GTX 1050 laptop) before this gate was added.
+            arch.Add(new() { Id="pow7", Category="Power", Tier=TweakTier.Safe, Name="CPU 100% Min/Max", Description="[DESKTOP] Lock CPU at 100% min/max so it never throttles under load. Desktop-only — on a laptop this removes thermal recovery time and causes worse throttling, not less.",
+                ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMIN 100 && powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMAX 100 && powercfg -setactive scheme_current",
+                RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMIN 5 && powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMAX 100 && powercfg -setactive scheme_current" });
+            arch.Add(new() { Id="cpu4", Category="CPU", Tier=TweakTier.Safe, Name="Perf Boost Mode", Description="[DESKTOP] Aggressive processor turbo boost. Desktop-only — \"Aggressive\" mode ramps to turbo clocks faster/more readily under any load, which brings a laptop to its thermal limit sooner under sustained gaming than the default \"Enabled\" boost mode.",
+                ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 2 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 && powercfg -setactive scheme_current" });
+
+            // VOIDTUNE Power Plan — desktop profile. Duplicates Ultimate Performance (which
+            // already ships min-state 100 / parking off) and layers the settings with the
+            // strongest evidence from Microsoft's own power-tuning docs + community plans
+            // (Bitsum, Calypto, WinUtil): boost mode Aggressive, EPP 0 (the lever modern
+            // Speed-Shift/HWP silicon actually respects — no alias, hence the raw GUID),
+            // parking off explicitly (best-effort: some systems lock CPMINCORES to range 0-0
+            // because parking is already OS-managed; that write failing is benign, verified on
+            // real hardware), USB selective suspend + PCIe ASPM off. IDLEDISABLE is
+            // deliberately NOT here: community consensus is it adds ~30W idle heat, degrades
+            // frame pacing, and its only defensible use is benchmark runs on serious cooling.
+            // Locale-safe: detected/deduped by the name we set ourselves (the pow3 lesson).
+            arch.Add(new() { Id="pow10", Category="Power", Tier=TweakTier.Safe, Name="VOIDTUNE Power Plan", Description="[DESKTOP] Create + activate the VOIDTUNE plan: Ultimate Performance base with Aggressive boost, max energy-performance preference, core parking off, USB selective suspend off, and PCIe link power off — every setting evidence-backed (Microsoft power-tuning docs, Bitsum, Calypto), and none of the folklore ones that hurt frame pacing (C-state/idle disable is deliberately excluded).",
+                ApplyCmd=@"PS:$ErrorActionPreference='SilentlyContinue'; $list=(powercfg -list | Out-String); $m=[regex]::Match($list,'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[^\r\n]*\(VOIDTUNE Performance\)'); if($m.Success){$g=$m.Groups[1].Value}else{ $o=(powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 | Out-String); $g=[regex]::Match($o,'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}').Value; if($g){ powercfg -changename $g 'VOIDTUNE Performance' 'Hardware-aware plan by VOIDTUNE (desktop profile: Ultimate base + evidence-backed latency settings)' | Out-Null } }; if(-not $g){exit 1}; powercfg -setacvalueindex $g SUB_PROCESSOR PERFBOOSTMODE 2 | Out-Null; powercfg -setacvalueindex $g SUB_PROCESSOR 36687f9e-e3a5-4dbf-b1dc-15eb381c6863 0 | Out-Null; powercfg -setacvalueindex $g SUB_PROCESSOR CPMINCORES 100 | Out-Null; powercfg -setacvalueindex $g SUB_PROCESSOR PROCTHROTTLEMIN 100 | Out-Null; powercfg -setacvalueindex $g 2a737441-1930-4402-8d77-b2bebba308a3 48e6b7a6-50f5-4782-a5d4-53bb8f07e226 0 | Out-Null; powercfg -setacvalueindex $g SUB_PCIEXPRESS ASPM 0 | Out-Null; powercfg -setactive $g; exit 0",
+                RevertCmd=@"PS:$ErrorActionPreference='SilentlyContinue'; powercfg -setactive 381b4222-f694-41f0-9685-ff5bb260df2e | Out-Null; $list=(powercfg -list | Out-String); $m=[regex]::Match($list,'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[^\r\n]*\(VOIDTUNE Performance\)'); if($m.Success){ powercfg -delete $m.Groups[1].Value | Out-Null }; exit 0" });
         }
 
         // RAM-gated: caching tweaks that only help (and are only safe) with plenty of memory.
@@ -110,8 +171,6 @@ public static class TweakCatalog
         // ── CPU ──────────────────────────────────────────────────────────────
         new() { Id="cpu2", Category="CPU", Tier=TweakTier.Safe, Name="Win32 Priority Separation", Description="Foreground apps get the largest CPU time slices.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 38 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\PriorityControl"" /v Win32PrioritySeparation /t REG_DWORD /d 2 /f" },
-        new() { Id="cpu4", Category="CPU", Tier=TweakTier.Safe, Name="Perf Boost Mode", Description="Maximum processor turbo boost.",
-            ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 2 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 && powercfg -setactive scheme_current" },
         new() { Id="cpu7", Category="CPU", Tier=TweakTier.Extreme, Name="No Power Throttling", Description="Remove background CPU power limits.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Power\PowerThrottling"" /v PowerThrottlingOff /t REG_DWORD /d 1 /f", RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Power\PowerThrottling"" /v PowerThrottlingOff /f" },
         new() { Id="cpu9", NeedsReboot=true, Category="CPU", Tier=TweakTier.Safe, Name="Distribute Timers", Description="Spread timer interrupts across all cores instead of core 0.",
@@ -218,8 +277,9 @@ public static class TweakCatalog
             ApplyCmd="sc config WerSvc start= disabled & sc stop WerSvc & exit /b 0", RevertCmd="sc config WerSvc start= demand & exit /b 0" },
         new() { Id="slim17", Category="Processes", Tier=TweakTier.Safe, Name="Disable Link Tracking", Description="Stop Distributed Link Tracking (TrkWks) — tracks moved shortcuts, rarely needed.",
             ApplyCmd="sc config TrkWks start= disabled & sc stop TrkWks & exit /b 0", RevertCmd="sc config TrkWks start= auto & exit /b 0" },
-        new() { Id="slim18", Category="Processes", Tier=TweakTier.Safe, Name="Disable UPnP / SSDP", Description="Stop SSDP Discovery + UPnP host — only needed for DLNA/media sharing.",
-            ApplyCmd="sc config SSDPSRV start= disabled & sc stop SSDPSRV & sc config upnphost start= disabled & sc stop upnphost & exit /b 0", RevertCmd="sc config SSDPSRV start= demand & sc config upnphost start= demand & exit /b 0" },
+        new() { Id="slim18", Category="Processes", Tier=TweakTier.Safe, Name="Disable UPnP / Network Discovery", Description="Stop SSDP Discovery, UPnP host, and Function Discovery (Resource Publication + Provider Host) — only needed for DLNA/media sharing and browsing other devices in Explorer's Network tab.",
+            ApplyCmd="sc config SSDPSRV start= disabled & sc stop SSDPSRV & sc config upnphost start= disabled & sc stop upnphost & sc config FDResPub start= disabled & sc stop FDResPub & sc config fdPHost start= disabled & sc stop fdPHost & exit /b 0",
+            RevertCmd="sc config SSDPSRV start= demand & sc config upnphost start= demand & sc config FDResPub start= demand & sc config fdPHost start= demand & exit /b 0" },
         new() { Id="slim19", Category="Processes", Tier=TweakTier.Safe, Name="Disable Smart Card Stack", Description="Stop SCardSvr / ScDeviceEnum / SCPolicySvc — no smart-card reader needed.",
             ApplyCmd="sc config SCardSvr start= disabled & sc stop SCardSvr & sc config ScDeviceEnum start= disabled & sc stop ScDeviceEnum & sc config SCPolicySvc start= disabled & sc stop SCPolicySvc & exit /b 0", RevertCmd="sc config SCardSvr start= demand & sc config ScDeviceEnum start= demand & sc config SCPolicySvc start= demand & exit /b 0" },
         new() { Id="slim20", Category="Processes", Tier=TweakTier.Safe, Name="Disable Image Acquisition", Description="Stop Windows Image Acquisition (stisvc) — only for scanners/old cameras.",
@@ -232,8 +292,9 @@ public static class TweakCatalog
             ApplyCmd="sc config wisvc start= disabled & sc stop wisvc & exit /b 0", RevertCmd="sc config wisvc start= demand & exit /b 0" },
         new() { Id="slim24", Category="Processes", Tier=TweakTier.Extreme, Name="Disable User Sync Services", Description="Disable per-user data services (OneSync, Messaging, Contacts/Unistore/UserData) — breaks Mail/Calendar/People sync.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\OneSyncSvc"" /v Start /t REG_DWORD /d 4 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\MessagingService"" /v Start /t REG_DWORD /d 4 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\PimIndexMaintenanceSvc"" /v Start /t REG_DWORD /d 4 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\UnistoreSvc"" /v Start /t REG_DWORD /d 4 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\UserDataSvc"" /v Start /t REG_DWORD /d 4 /f & exit /b 0", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\OneSyncSvc"" /v Start /t REG_DWORD /d 3 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\MessagingService"" /v Start /t REG_DWORD /d 3 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\PimIndexMaintenanceSvc"" /v Start /t REG_DWORD /d 3 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\UnistoreSvc"" /v Start /t REG_DWORD /d 3 /f & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\UserDataSvc"" /v Start /t REG_DWORD /d 3 /f & exit /b 0" },
-        new() { Id="slim25", Category="Processes", Tier=TweakTier.Extreme, Name="Disable CDP User Service", Description="Disable Connected Devices Platform per-user service (CDPUserSvc) — chatty background callbacks.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\CDPUserSvc"" /v Start /t REG_DWORD /d 4 /f & exit /b 0", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Services\CDPUserSvc"" /v Start /t REG_DWORD /d 2 /f & exit /b 0" },
+        new() { Id="slim25", Category="Processes", Tier=TweakTier.Extreme, Name="Disable CDP (Connected Devices Platform)", Description="Disable the base Connected Devices Platform service (CDPSvc) and its per-user instance (CDPUserSvc) — chatty background callbacks behind Nearby Sharing / Continue on PC.",
+            ApplyCmd=@"sc config CDPSvc start= disabled & sc stop CDPSvc & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\CDPUserSvc"" /v Start /t REG_DWORD /d 4 /f & exit /b 0",
+            RevertCmd=@"sc config CDPSvc start= demand & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\CDPUserSvc"" /v Start /t REG_DWORD /d 2 /f & exit /b 0" },
         new() { Id="slim26", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Push Notifications", Description="Stop WpnService + per-user WpnUserService — disables toast notifications, removes their hosts.",
             ApplyCmd=@"sc config WpnService start= disabled & sc stop WpnService & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\WpnUserService"" /v Start /t REG_DWORD /d 4 /f & exit /b 0", RevertCmd=@"sc config WpnService start= auto & sc start WpnService & reg add ""HKLM\SYSTEM\CurrentControlSet\Services\WpnUserService"" /v Start /t REG_DWORD /d 2 /f & exit /b 0" },
         new() { Id="slim27", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Update Orchestrator", Description="Stop UsoSvc + wuauserv — no Windows Updates until reverted. Removes update background hosts.",
@@ -279,7 +340,7 @@ public static class TweakCatalog
             ApplyCmd=@"schtasks /Change /TN ""GoogleUpdateTaskMachineCore"" /Disable 2>nul & schtasks /Change /TN ""GoogleUpdateTaskMachineUA"" /Disable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineCore"" /Disable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineUA"" /Disable 2>nul & exit /b 0", RevertCmd=@"schtasks /Change /TN ""GoogleUpdateTaskMachineCore"" /Enable 2>nul & schtasks /Change /TN ""MicrosoftEdgeUpdateTaskMachineCore"" /Enable 2>nul & exit /b 0" },
 
         // ── Power ─────────────────────────────────────────────────────────────
-        new() { Id="pow3", Category="Power", Tier=TweakTier.Extreme, Name="Ultimate Performance", Description="Unlock AND activate the hidden Ultimate Performance power plan — max clocks, best FPS.",
+        new() { Id="pow3", Category="Power", Tier=TweakTier.Extreme, Name="Ultimate Performance", Description="Unlock AND activate the hidden Ultimate Performance power plan — max clocks, best sustained FPS on a desktop with real cooling. On a thermally-limited laptop this can do the opposite: confirmed case of a laptop gaining ~100 FPS by switching back to the Windows-recommended Balanced plan, because \"always max power\" removed its thermal recovery window and made it throttle harder. If you're on a laptop, test FPS before/after — don't assume this helps.",
             // Detects an already-unlocked Ultimate Performance plan by GUID, not by name: powercfg's
             // scheme names are shown in the OS display language ("Ultimate Performance" in English,
             // "Desempenho Máximo" in Portuguese, etc.), so matching the English string only worked on
@@ -294,8 +355,6 @@ public static class TweakCatalog
             ApplyCmd="powercfg /hibernate off", RevertCmd="powercfg /hibernate on" },
         new() { Id="pow6", Category="Power", Tier=TweakTier.Safe, Name="Disable Fast Startup", Description="Ensure a clean boot, avoid stale driver state.",
             ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"" /v HiberbootEnabled /t REG_DWORD /d 0 /f", RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"" /v HiberbootEnabled /t REG_DWORD /d 1 /f" },
-        new() { Id="pow7", Category="Power", Tier=TweakTier.Safe, Name="CPU 100% Min/Max", Description="Lock CPU at 100% min/max so it never throttles under load.",
-            ApplyCmd="powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMIN 100 && powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMAX 100 && powercfg -setactive scheme_current", RevertCmd="powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMIN 5 && powercfg -setacvalueindex scheme_current sub_processor PROCTHROTTLEMAX 100 && powercfg -setactive scheme_current" },
 
         // ── Latency ───────────────────────────────────────────────────────────
         new() { Id="lat1", Category="Latency", Tier=TweakTier.Safe, Name="Fast App Kill", Description="2s app-kill timeout on shutdown.",
@@ -310,6 +369,8 @@ public static class TweakCatalog
         // ── Game ──────────────────────────────────────────────────────────────
         new() { Id="gm0", Category="Game", Tier=TweakTier.Safe, Name="Auto Game Boost", Description="Automatically detects when a fullscreen game is running and pins it to your fastest cores (Intel P-cores / AMD CCD-0), pushes Discord/browsers/background apps onto the rest, raises the game's priority and turns off power throttling. Everything restores instantly when the game closes. No per-game setup.",
             ApplyCmd="ENGINE:autoboost:on", RevertCmd="ENGINE:autoboost:off" },
+        new() { Id="gm10", Category="Game", Tier=TweakTier.Safe, Name="Game-Time Power Plan", Description="Switch to the VOIDTUNE Performance power plan the moment a fullscreen game starts, and back to your normal plan when it closes — max clocks during play, normal power/heat/noise the rest of the time (the pattern Bitsum recommends instead of running an aggressive plan 24/7). Needs the \"VOIDTUNE Power Plan\" tweak applied so there's a plan to switch to.",
+            ApplyCmd="ENGINE:gametimepower:on", RevertCmd="ENGINE:gametimepower:off" },
         new() { Id="gm1", Category="Game", Tier=TweakTier.Safe, Name="Game Mode", Description="Enable Windows Game Mode.",
             ApplyCmd=@"reg add ""HKCU\Software\Microsoft\GameBar"" /v AllowAutoGameMode /t REG_DWORD /d 1 /f", RevertCmd=@"reg add ""HKCU\Software\Microsoft\GameBar"" /v AllowAutoGameMode /t REG_DWORD /d 0 /f" },
         new() { Id="gm2", Category="Game", Tier=TweakTier.Safe, Name="MMCSS Games = High", Description="High scheduling category for game tasks.",
@@ -419,9 +480,15 @@ public static class TweakCatalog
         new() { Id="upd10", Category="Debloat", Tier=TweakTier.Safe, Name="Block Driver Updates in WU", Description="Stop Windows Update from silently replacing your GPU/chipset drivers with its own (often older) versions. You still get security updates; just not driver overwrites.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 0 /f & exit /b 0",
             RevertCmd=@"reg delete ""HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"" /v ExcludeWUDriversInQualityUpdate /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching"" /v SearchOrderConfig /t REG_DWORD /d 1 /f & exit /b 0" },
-        new() { Id="ux1", Category="Debloat", Tier=TweakTier.Safe, Name="Faster Shutdown & App Kill", Description="Cut the timeouts Windows waits before killing hung services/apps on shutdown and close — snappier shutdown, no long hang when an app won't close.",
-            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /t REG_SZ /d 1 /f & exit /b 0",
-            RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 5000 /f & reg delete ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /f & reg delete ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /f & reg delete ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /f & exit /b 0" },
+        // 0.8.14: ux1 no longer touches HungAppTimeout or AutoEndTasks. HungAppTimeout=2000 +
+        // AutoEndTasks=1 made Windows auto-kill ANY app it considered hung for 2 seconds —
+        // including Explorer during routine stalls (thumbnails, network folders, slow disks),
+        // which showed up in the field as "Explorer randomly restarts itself". Same failure
+        // class was reported by another optimizer's users (WinUtil issue #122). The remaining
+        // two values only act during shutdown, which is all the description ever promised.
+        new() { Id="ux1", Category="Debloat", Tier=TweakTier.Safe, Name="Faster Shutdown", Description="Cut the timeouts Windows waits for services/apps during shutdown — snappier shutdown, no multi-second hang on close. Doesn't touch running apps: the aggressive auto-kill-hung-apps variant of this tweak made Windows restart Explorer mid-session and was removed.",
+            ApplyCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 2000 /f & reg add ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /t REG_SZ /d 2000 /f & reg delete ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /f 2>nul & reg delete ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /f 2>nul & exit /b 0",
+            RevertCmd=@"reg add ""HKLM\SYSTEM\CurrentControlSet\Control"" /v WaitToKillServiceTimeout /t REG_SZ /d 5000 /f & reg delete ""HKCU\Control Panel\Desktop"" /v WaitToKillAppTimeout /f & reg delete ""HKCU\Control Panel\Desktop"" /v HungAppTimeout /f 2>nul & reg delete ""HKCU\Control Panel\Desktop"" /v AutoEndTasks /f 2>nul & exit /b 0" },
         new() { Id="slim51", Category="Processes", Tier=TweakTier.Safe, Name="Disable Error Reporting", Description="Turn off Windows Error Reporting — removes the WerFault / WerSvc background work that fires on every app hiccup.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /t REG_DWORD /d 1 /f & sc config WerSvc start= disabled & sc stop WerSvc & exit /b 0",
             RevertCmd=@"reg delete ""HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting"" /v Disabled /f & sc config WerSvc start= demand & exit /b 0" },
@@ -446,7 +513,7 @@ public static class TweakCatalog
             ApplyCmd="sc config XblAuthManager start= disabled & sc config XblGameSave start= disabled & sc config XboxNetApiSvc start= disabled & sc config XboxGipSvc start= disabled & sc stop XblAuthManager & sc stop XblGameSave & sc stop XboxNetApiSvc & sc stop XboxGipSvc & exit /b 0",
             RevertCmd="sc config XblAuthManager start= demand & sc config XblGameSave start= demand & sc config XboxNetApiSvc start= demand & sc config XboxGipSvc start= demand & exit /b 0" },
 
-        // ── New in 0.8.13 — sourced from AtlasOS/ReviOS/Microsoft docs, cross-checked for
+        // ── New in 0.8.14 — sourced from AtlasOS/ReviOS/Microsoft docs, cross-checked for
         //    real mechanism + no known regressions before inclusion (see CHANGELOG).
         new() { Id="slim59", Category="Processes", Tier=TweakTier.Safe, Name="De-prioritize Background Processes (IFEO)", Description="Lower the CPU/I-O scheduling priority of SearchIndexer, ctfmon, fontdrvhost and sihost via Image File Execution Options — the same documented mechanism Windows itself uses for foreground-app boosting, just aimed the other way. These keep running (nothing is disabled) but yield CPU/disk to your game the moment it needs it.",
             ApplyCmd=@"reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SearchIndexer.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 5 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ctfmon.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\ctfmon.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\fontdrvhost.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\fontdrvhost.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sihost.exe\PerfOptions"" /v CpuPriorityClass /t REG_DWORD /d 1 /f & reg add ""HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sihost.exe\PerfOptions"" /v IoPriority /t REG_DWORD /d 1 /f & exit /b 0",
@@ -461,14 +528,29 @@ public static class TweakCatalog
         new() { Id="ext1", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Bluetooth Stack", Description="Stop the Bluetooth Support Service, Audio Gateway and per-user Bluetooth service template — removes their persistent processes entirely. Only apply if you have no Bluetooth radio or don't use Bluetooth mice/headsets/controllers, since this breaks all of them.",
             ApplyCmd="sc config bthserv start= disabled & sc config BTAGService start= disabled & sc config BluetoothUserService start= disabled & sc stop bthserv & sc stop BTAGService & exit /b 0",
             RevertCmd="sc config bthserv start= demand & sc config BTAGService start= demand & sc config BluetoothUserService start= demand & exit /b 0" },
-        new() { Id="ext2", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Print Spooler", Description="Stop the Print Spooler service, which runs 24/7 even with no printer attached and is a notorious attack surface (PrintNightmare). Breaks ALL printing and some \"print to PDF\" flows — only apply if you never print from this PC.",
-            ApplyCmd="sc config Spooler start= disabled & sc stop Spooler & exit /b 0", RevertCmd="sc config Spooler start= demand & sc start Spooler & exit /b 0" },
+        new() { Id="ext2", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Print Spooler", Description="Stop the Print Spooler service and its notification helper (PrintNotify), which run even with no printer attached — Spooler is also a notorious attack surface (PrintNightmare). Breaks ALL printing and some \"print to PDF\" flows — only apply if you never print from this PC.",
+            ApplyCmd="sc config Spooler start= disabled & sc stop Spooler & sc config PrintNotify start= disabled & sc stop PrintNotify & exit /b 0",
+            RevertCmd="sc config Spooler start= demand & sc start Spooler & sc config PrintNotify start= demand & exit /b 0" },
         new() { Id="ext3", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Sensor & Biometric Services", Description="Stop the ambient-light/orientation sensor services and Windows Biometric Service — idle overhead on any desktop with no sensors. Breaks auto-brightness, auto-rotate, and Windows Hello fingerprint/face login where present.",
             ApplyCmd="sc config SensorService start= disabled & sc config SensrSvc start= disabled & sc config SensorDataService start= disabled & sc config WbioSrvc start= disabled & sc stop SensorService & sc stop SensrSvc & sc stop SensorDataService & sc stop WbioSrvc & exit /b 0",
             RevertCmd="sc config SensorService start= demand & sc config SensrSvc start= demand & sc config SensorDataService start= demand & sc config WbioSrvc start= demand & exit /b 0" },
         new() { Id="ext4", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Remote Desktop Services", Description="Stop Remote Desktop Services, its user-mode port redirector and session-env helper — removes idle processes and a real remote-access attack surface. Breaks inbound Remote Desktop and Remote Assistance/Quick Assist; skip if you ever connect to this PC remotely.",
             ApplyCmd="sc config TermService start= disabled & sc config SessionEnv start= disabled & sc config UmRdpService start= disabled & sc stop TermService & sc stop SessionEnv & sc stop UmRdpService & exit /b 0",
             RevertCmd="sc config TermService start= demand & sc config SessionEnv start= demand & sc config UmRdpService start= demand & exit /b 0" },
+
+        // ── New in 0.8.14 — closing the process-count gap vs. Platinum+ and similar
+        //    community optimizers: read their actual scripts, verified which of their
+        //    service disables are genuinely Automatic-by-default (real footprint) vs.
+        //    already Manual/trigger-start (would be a no-op, the slim12 lesson) before adding.
+        new() { Id="slim63", Category="Processes", Tier=TweakTier.Safe, Name="Disable Shell Hardware Detection", Description="Stop AutoPlay's hardware-detection service — Automatic by default, real background footprint. Only loses the AutoPlay prompt when inserting USB drives/discs; manually opening them in Explorer still works fine.",
+            ApplyCmd="sc config ShellHWDetection start= disabled & sc stop ShellHWDetection & exit /b 0", RevertCmd="sc config ShellHWDetection start= auto & sc start ShellHWDetection & exit /b 0" },
+
+        new() { Id="ext5", Category="Processes", Tier=TweakTier.Extreme, Name="Disable Windows Search", Description="Stop the Windows Search indexer (WSearch) — one of the heaviest background services on a stock install (Automatic-Delayed by default). Breaks Start Menu app/file search and Explorer's search box (still works, just does a slow live scan instead of using the index).",
+            ApplyCmd="sc config WSearch start= disabled & sc stop WSearch & exit /b 0", RevertCmd="sc config WSearch start= delayed-auto & sc start WSearch & exit /b 0" },
+        new() { Id="ext6", Category="Processes", Tier=TweakTier.Extreme, Name="Disable File/Printer Sharing (Server Service)", Description="Stop the Server service (LanmanServer) — Automatic by default even though most single-PC gaming setups never share a folder or printer from this machine. Breaks SMB file sharing, printer sharing, and being visible to other PCs on the network as a share target.",
+            ApplyCmd="sc config LanmanServer start= disabled & sc stop LanmanServer & exit /b 0", RevertCmd="sc config LanmanServer start= auto & sc start LanmanServer & exit /b 0" },
+        new() { Id="ext7", Category="Network", Tier=TweakTier.Extreme, Name="Disable IP Helper", Description="Stop IP Helper (iphlpsvc) — Automatic by default, handles IPv6 transition tunneling (Teredo/6to4/ISATAP). Real background service, but disabling can break IPv6 connectivity or specific VPN clients that depend on it — only apply if you're on IPv4-only networking and don't use an affected VPN.",
+            ApplyCmd="sc config iphlpsvc start= disabled & sc stop iphlpsvc & exit /b 0", RevertCmd="sc config iphlpsvc start= auto & sc start iphlpsvc & exit /b 0" },
 
         // ── Restore (reset to defaults — never auto-selected) ───────────────────
         new() { Id="rst1", Category="Restore", Tier=TweakTier.Safe, Name="Restore Network", Description="Reset TCP/IP global settings to defaults.",
@@ -495,6 +577,12 @@ public static class TweakCatalog
                      "$mm='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management'; 'DisablePagingExecutive','DisablePageCombining','LargeSystemCache','IoPageLockLimit','PoolUsageMaximum' | ForEach-Object { Remove-ItemProperty $mm -Name $_ -EA SilentlyContinue }; " +
                      "$k='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel'; 'NoLazyMode','DistributeTimers','GlobalTimerResolutionRequests','DPCTimeout' | ForEach-Object { Remove-ItemProperty $k -Name $_ -EA SilentlyContinue }; " +
                      "$g='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers'; 'HwSchMode','EnableVsyncLatencyUpdate','DisableVsyncLatencyUpdate','EnableMidGfxPreemption','EnableMidBufferPreemption','DisableDynamicPstate' | ForEach-Object { Remove-ItemProperty $g -Name $_ -EA SilentlyContinue }; " +
+                     // Remove the PERFBOOSTMODE definition overrides written by the old ix1/ix3 tweaks
+                     // (removed in 0.8.14) — ValueMax=0 clamped turbo boost OFF machine-wide on Intel.
+                     "$pb='HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\54533251-82be-4824-96c1-47b60b740d00\\be337238-0d82-4146-a960-4f3749d470c7'; 'ValueMax','ValueMin' | ForEach-Object { Remove-ItemProperty $pb -Name $_ -EA SilentlyContinue }; " +
+                     // Remove the hung-app auto-kill pair written by pre-0.8.14 ux1 — it made Windows
+                     // restart Explorer whenever it stalled 2s (thumbnails, network folders).
+                     "$dk='HKCU:\\Control Panel\\Desktop'; 'HungAppTimeout','AutoEndTasks' | ForEach-Object { Remove-ItemProperty $dk -Name $_ -EA SilentlyContinue }; " +
                      "$tp='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters'; 'TCPNoDelay','TcpTimedWaitDelay','MaxUserPort','DisableBandwidthThrottling' | ForEach-Object { Remove-ItemProperty $tp -Name $_ -EA SilentlyContinue }; " +
                      // `netsh int tcp/ip reset` fully reinitializes the stack incl. the Winsock LSP
                      // catalog — it can drop live connections and crash/kill any process holding an
@@ -502,6 +590,8 @@ public static class TweakCatalog
                      // chat, game launchers). A "restore defaults" tool has no business doing that.
                      // Same safe, targeted settings reset the rst1 "Restore Network" tweak already uses.
                      "netsh int tcp set global autotuninglevel=normal | Out-Null; netsh int tcp set global ecncapability=enabled | Out-Null; netsh int tcp set global rsc=enabled | Out-Null; netsh int tcp set global congestionprovider=default | Out-Null; ipconfig /flushdns | Out-Null; exit 0", RevertCmd="" },
+        new() { Id="rst7", Category="Restore", Tier=TweakTier.Safe, NeedsReboot=true, Name="Restore CPU Turbo Boost", Description="Removes a leftover from older VOIDTUNE versions (\"Intel Speed Shift EPP\" / \"Intel No SpeedStep\", both removed in 0.8.14) that clamped the turbo-boost setting's allowed range machine-wide — capable of disabling turbo on every power plan. If your CPU never clocks above its base frequency under load (check the multiplier in CPU-Z), run this and reboot.",
+            ApplyCmd=@"reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMax /f 2>nul & reg delete ""HKLM\SYSTEM\CurrentControlSet\Control\Power\PowerSettings\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7"" /v ValueMin /f 2>nul & powercfg -setacvalueindex scheme_current sub_processor PERFBOOSTMODE 1 & powercfg -setactive scheme_current & exit /b 0", RevertCmd="" },
 
     };
 }

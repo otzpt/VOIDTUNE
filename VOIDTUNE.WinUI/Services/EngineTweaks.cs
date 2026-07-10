@@ -23,10 +23,23 @@ public static class EngineTweaks
                 case "autoboost":
                     AppSettingsStore.AutoGameBoost = on;
                     if (on) GameWatcherService.Start();
-                    else GameWatcherService.Stop();   // also restores any active boost
+                    else if (!AppSettingsStore.GameTimePowerPlan) GameWatcherService.Stop(); // full stop restores boost + plan
+                    else VoidSchedulerService.Instance.RestoreAll();  // watcher stays for the power plan; just undo the boost
                     return new CommandResult(true, on
                         ? "Auto Game Boost enabled — fullscreen games are boosted automatically."
                         : "Auto Game Boost disabled — everything restored.");
+
+                case "gametimepower":
+                    AppSettingsStore.GameTimePowerPlan = on;
+                    if (on) GameWatcherService.Start();
+                    else
+                    {
+                        GameWatcherService.RestorePowerPlanNow();     // if a game is mid-session, put the plan back now
+                        if (!AppSettingsStore.AutoGameBoost) GameWatcherService.Stop();
+                    }
+                    return new CommandResult(true, on
+                        ? "Game-Time Power Plan enabled — the VOIDTUNE plan activates while a game runs, your normal plan comes back after."
+                        : "Game-Time Power Plan disabled.");
 
                 default:
                     return new CommandResult(false, $"Unknown engine tweak '{name}'.");

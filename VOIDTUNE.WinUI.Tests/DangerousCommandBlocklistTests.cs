@@ -45,6 +45,19 @@ public class DangerousCommandBlocklistTests
 
         new("forced shutdown/restart should never be embedded in a tweak command — the app's own reboot prompt handles this",
             new Regex(@"shutdown\s+/[rs]\b", RegexOptions.IgnoreCase)),
+
+        new("writing ValueMax/ValueMin under Control\\Power\\PowerSettings redefines a power setting's " +
+            "allowed range MACHINE-WIDE, across every plan — the removed ix1 tweak did this and clamped " +
+            "turbo boost off on all Intel machines (field-confirmed FPS loss that survived plan switches). " +
+            "Change plan values with powercfg, never the setting definitions. (reg delete to CLEAN UP " +
+            "stale overrides, as rst7 does, is fine.)",
+            new Regex(@"reg\s+add\s+""HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power\\PowerSettings\\[^""]*""\s+/v\s+Value(Max|Min)\b", RegexOptions.IgnoreCase)),
+
+        new("AutoEndTasks=1 makes Windows auto-kill any app it considers hung — combined with a short " +
+            "HungAppTimeout it repeatedly killed Explorer during routine 2-second stalls (field-confirmed " +
+            "\"Explorer randomly restarts\" from the pre-0.8.14 ux1 tweak). Deleting the value is fine; " +
+            "setting it is not.",
+            new Regex(@"reg\s+add\s+""HKCU\\Control Panel\\Desktop""\s+/v\s+AutoEndTasks\b", RegexOptions.IgnoreCase)),
     };
 
     public static IEnumerable<object[]> AllTweaks() =>

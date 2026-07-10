@@ -21,6 +21,7 @@ public static class AppSettingsStore
         public List<string> AppliedTweaks { get; set; } = new();
         public bool DevMode { get; set; }
         public bool AutoGameBoost { get; set; }
+        public bool GameTimePowerPlan { get; set; }
         public List<CustomTweakModel> CustomTweaks { get; set; } = new();
     }
 
@@ -52,6 +53,14 @@ public static class AppSettingsStore
     {
         get => _m.AutoGameBoost;
         set { if (_m.AutoGameBoost == value) return; _m.AutoGameBoost = value; Save(); }
+    }
+
+    /// <summary>Whether the watcher switches to the VOIDTUNE Performance power plan while a
+    /// game runs and back afterwards (the Game-Time Power Plan tweak).</summary>
+    public static bool GameTimePowerPlan
+    {
+        get => _m.GameTimePowerPlan;
+        set { if (_m.GameTimePowerPlan == value) return; _m.GameTimePowerPlan = value; Save(); }
     }
 
     public static IReadOnlyList<string> AppliedTweaks => _m.AppliedTweaks;

@@ -54,6 +54,28 @@ public sealed partial class DashboardPage : Page
         GpuChip.Text = HardwareInfo.GpuName.Trim();
         RamChip.Text = $"{HardwareInfo.TotalRamGb:0} GB RAM";
         BuildChip.Text = $"WIN BUILD {HardwareInfo.WinBuild}";
+        _ = ShowHardwareAdviceOnceAsync();
+    }
+
+    private static bool _adviceShown;
+
+    /// <summary>One-time (per app run) hardware advisory — currently the XMP/EXPO check, the
+    /// biggest FPS lever that lives in the BIOS where no tweak can reach it.</summary>
+    private async System.Threading.Tasks.Task ShowHardwareAdviceOnceAsync()
+    {
+        if (_adviceShown) return;
+        _adviceShown = true;
+        try
+        {
+            // Startup repairs first — the user should know their machine was just fixed.
+            if (RecallRepairService.RepairsDone.Count > 0)
+                ShowStatus(string.Join(" ", RecallRepairService.RepairsDone), InfoBarSeverity.Success);
+
+            var findings = await HardwareAdvisor.RunAsync();
+            if (findings.Count > 0)
+                ShowStatus("Hardware advisor: " + string.Join(" ", findings), InfoBarSeverity.Warning);
+        }
+        catch { /* advisory only */ }
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -309,6 +331,8 @@ public sealed partial class DashboardPage : Page
         SetBusy(false);
         ShowStatus($"Applied {ok} SAFE tweaks" + (fail > 0 ? $", {fail} failed." : "."),
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
+
+        if (fail > 0) await Views.ApplyFailureDialog.ShowAsync(this.XamlRoot, _engine.LastApplyFailures, _engine.LastApplyLogPath);
         Refresh();
 
         int rebootCount = confirmed.Count(t => t.NeedsReboot && t.Applied);

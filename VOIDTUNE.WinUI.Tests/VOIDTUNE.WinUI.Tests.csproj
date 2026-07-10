@@ -35,6 +35,8 @@
     <Compile Include="..\VOIDTUNE.WinUI\Services\HardwareInfo.cs" Link="Source\HardwareInfo.cs" />
     <Compile Include="..\VOIDTUNE.WinUI\Services\SystemMonitor.cs" Link="Source\SystemMonitor.cs" />
     <Compile Include="..\VOIDTUNE.WinUI\Services\VoidSchedulerService.cs" Link="Source\VoidSchedulerService.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\StressTestService.cs" Link="Source\StressTestService.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\FallbackSynth.cs" Link="Source\FallbackSynth.cs" />
   </ItemGroup>
 
 </Project>

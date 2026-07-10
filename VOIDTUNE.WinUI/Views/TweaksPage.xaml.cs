@@ -217,6 +217,8 @@ public sealed partial class TweaksPage : Page
                    fail > 0 ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
         ApplyFilter();
 
+        if (fail > 0) await ApplyFailureDialog.ShowAsync(this.XamlRoot, _engine.LastApplyFailures, _engine.LastApplyLogPath);
+
         int rebootCount = confirmed.Count(t => t.NeedsReboot && t.Applied);
         if (rebootCount > 0) await RebootPrompt.ShowAsync(this.XamlRoot, rebootCount);
     }

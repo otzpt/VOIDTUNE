@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.8.14] - 2026-07-07 (WinUI 3 edition)
+
+### Added — automatic startup repair (recall system)
+- The app now checks for the exact damage signatures of recalled tweaks on **every launch** and removes them automatically — no user action, no knowing what "turbo boost" means, no Restore-tab archaeology. Currently repairs: the turbo-boost range clamp (old ix1/ix3) and the hung-app auto-kill pair (old ux1). Repairs are reported on the Dashboard when they happen. Signature-based (reads the actual registry damage), because the applied-tweaks state can't be trusted to remember removed tweaks.
+
+### Fixed — "Intel Speed Shift EPP" was disabling turbo boost machine-wide
+- The ix1 tweak (SAFE tier, auto-applied on every Intel machine since the early catalog) was mislabeled and wrong: it wrote `ValueMax=0` onto the machine-wide *definition* of the PERFBOOSTMODE power setting — clamping CPU turbo boost off **across every power plan**, which is why switching plans never fully recovered performance. Field-confirmed on an i7-8750H that stayed ~100 FPS below its known-good baseline until the override was deleted. ix1 and ix3 are removed; the new **"Restore CPU Turbo Boost"** tool (Restore tab) and Full Reset clean up the stale overrides for anyone who ever applied them; a new blocklist test bans this class of write permanently.
+
+### Fixed — "Faster Shutdown & App Kill" made Windows restart Explorer mid-session
+- `HungAppTimeout=2000` + `AutoEndTasks=1` (SAFE tier) told Windows to auto-kill any app unresponsive for 2 seconds — including Explorer during routine stalls (thumbnails, network folders, slow disks), which showed up in the field as "Explorer randomly restarts itself." The tweak (now "Faster Shutdown") keeps only the shutdown-scoped timeouts it always advertised, re-applying it or Full Reset removes the old values, and AutoEndTasks writes are now blocklist-banned.
+
+### Fixed — a real, field-confirmed laptop regression
+- **"Max performance" power tweaks were hurting laptops.** `CPU 100% Min/Max` (PROCTHROTTLEMIN=100), `Perf Boost Mode` (Aggressive), `NVIDIA Max Performance`, and `AMD GPU Deep Sleep Off` all remove the hardware's thermal recovery window. Fine with desktop cooling; on a thermally-limited laptop the chip heat-soaks and throttles *harder* — confirmed on an i7-8750H Lenovo Legion at 97°C sustained: 350→140 FPS in Minecraft, with ~100 FPS recovered just by returning to the Balanced plan. All four are now desktop-only; the Ultimate Performance tweak's description now tells laptop users to test instead of assume.
+
+### Added — measure, don't guess
+- **Tweak Validator** (Benchmarks page): 5 × 45-second sustained all-core stress runs (long enough to heat-soak — short burst benchmarks hide exactly this failure mode), median + noise-band statistics across the runs, and an A/B verdict against a saved baseline: IMPROVED / REGRESSED / WITHIN NOISE. Includes an independent **thermal-throttle detector** (last-10s vs first-10s throughput per run) that flags tweaks causing sag even when the median looks better. Baseline survives reboots.
+- **Apply-failure logging**: any failed tweak now writes a full log (system info + per-tweak result + error output) to `%LocalAppData%\VOIDTUNE\logs\`, and a popup lists exactly what failed with two actions — open a pre-filled GitHub issue (in your own browser, nothing auto-uploaded) or open the log folder.
+
+### Added — power, done right this time
+- **VOIDTUNE Power Plan** (new tweak, hardware-aware): desktop profile = Ultimate Performance base + Aggressive boost + EPP 0 + parking off + USB selective suspend off + PCIe ASPM off; laptop profile = **Balanced base** (encoding the field result above) + only the latency settings that don't generate heat, AC-only so battery behavior is untouched. Deliberately excludes C-state/idle disable (IDLEDISABLE) — community-measured net-negative (~30 W idle, worse frame pacing). Locale-safe plan detection; revert deletes the plan and returns to Balanced. Apply/re-apply(dedupe)/revert cycle live-tested.
+- **Game-Time Power Plan** (new tweak): activates the VOIDTUNE plan only while a fullscreen game is running and restores your previous plan when it closes — the Bitsum-recommended pattern instead of aggressive-24/7.
+
+### Added — self-healing fallbacks
+- When a service tweak's `sc config` is blocked (SCM quirks, policy, permission edge cases — the source of real "N tweaks failed" reports from other machines), the engine now automatically retries with the equivalent registry `Start` value write, which converges to the same state at reboot. Works on **both apply and revert** — a silently-failed revert is worse than a failed apply. Fully unit-tested against every service command in the shipped catalog.
+
+### Added — guardrails and advice
+- **Conflict detection test**: the suite now parses every registry write in the catalog and fails the build if two tweaks write different data to the same value (last-applied silently wins and one toggle lies).
+- **Hardware advisor** (Dashboard): detects RAM running below its rated speed — XMP/EXPO off in the BIOS is worth more FPS than any registry tweak, and nothing on the software side can fix it silently, so VOIDTUNE now tells you.
+- **Game-Time Power Plan** and self-healing fallbacks round out the "measure, don't guess" direction started with the Tweak Validator.
+
 ## [0.8.13] - 2026-07-06 (WinUI 3 edition)
 
 ### Added — automated test suite (`VOIDTUNE.WinUI.Tests`)

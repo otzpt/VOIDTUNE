@@ -1,10 +1,10 @@
-# VOIDTUNE v0.8.13
+# VOIDTUNE v0.8.14
 
 **Windows optimization suite for gamers and power users.**
 
 | Version | License | Platform | Current edition |
 |---------|---------|----------|-----------------|
-| 0.8.13 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
+| 0.8.14 | GPL v3 | Windows 10/11 (x64) | C# / WinUI 3 (Windows App SDK) |
 
 🌐 **[Website](https://voidtune-optimizer.netlify.app)** • 📦 **[Releases](https://github.com/otzpt/VOIDTUNE/releases)** • 🐛 **[Issues](https://github.com/otzpt/VOIDTUNE/issues)**
 
@@ -15,6 +15,18 @@
 - **WinUI 3 (current)** — the native C# rewrite lives in [`VOIDTUNE.WinUI/`](VOIDTUNE.WinUI/). Fluent / Mica UI, ~170 reversible tweaks, in-app auto-update, MSI + portable builds. Build/run notes in [VOIDTUNE.WinUI/README.md](VOIDTUNE.WinUI/README.md).
 - **VOIDTUNE One-Click (native C)** — a ~170 KB, zero-dependency automatic optimizer: [otzpt/Voidtune-one-click](https://github.com/otzpt/Voidtune-one-click). Hit "Optimize Now," done. No install, runs anywhere Windows runs.
 - **PowerShell + WPF (original)** — the original ps2exe edition at the repo root (`VOIDTUNE.ps1`, `core/`, `modules/`, `ui/`). Still functional; superseded by the WinUI app.
+
+## 🚀 What's New in v0.8.14 (WinUI 3 edition)
+
+- **Fixed a real laptop regression** — "max performance" power tweaks (CPU min 100%, aggressive boost, GPU max power state) forced thermally-limited laptops to throttle *harder*, confirmed on real hardware (350→140 FPS in Minecraft on an i7-8750H; back to Balanced gained ~100 FPS). All of them are now desktop-only; laptops get thermal-aware behavior
+- **VOIDTUNE Power Plan** — a custom hardware-aware power plan built from evidence (Microsoft power-tuning docs, Bitsum, Calypto): Ultimate-based aggressive profile on desktops, Balanced-based latency-safe profile on laptops. C-state/idle disable deliberately excluded (community-confirmed net-negative)
+- **Game-Time Power Plan** — switch to the VOIDTUNE plan only while a game runs, back to normal after (Bitsum-recommended pattern: max clocks during play, sane heat/noise otherwise)
+- **Tweak Validator** (Benchmarks page) — 5 × 45s sustained stress runs with a statistical verdict: tells you whether tweaks genuinely helped, hurt, or were within noise on *your* machine — including a thermal-throttle detector
+- **Failure logging + one-click GitHub report** — when tweaks fail, a popup shows exactly which and why, writes a full log to `%LocalAppData%\VOIDTUNE\logs\`, and can open a pre-filled GitHub issue
+- **Self-healing fallbacks** — when a service tweak's live change is blocked, VOIDTUNE now automatically retries via the equivalent registry write (converges at reboot), for both apply *and* revert
+- **New process-reducers** vs. other optimizers' real catalogs: Windows Search, File/Printer Sharing, IP Helper (all opt-in EXTREME), Shell Hardware Detection, plus extended UPnP/CDP/Print Spooler coverage
+
+> Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## 🚀 What's New in v0.8.13 (WinUI 3 edition)
 
@@ -156,14 +168,14 @@ VOIDTUNE is a free, open-source Windows optimizer and debloater built with Power
 
 ### Option A — MSI installer (recommended)
 
-1. Download **`VOIDTUNE-0.8.13-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
+1. Download **`VOIDTUNE-0.8.14-Setup.msi`** from the [Releases](https://github.com/otzpt/VOIDTUNE/releases) page.
 2. Run it and follow the wizard.
 
 Installs to `Program Files`, adds Start Menu + Desktop shortcuts, and registers in Add/Remove Programs for a clean uninstall.
 
 ### Option B — Portable ZIP
 
-1. Download **`VOIDTUNE-0.8.13-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
+1. Download **`VOIDTUNE-0.8.14-portable-win-x64.zip`** from [Releases](https://github.com/otzpt/VOIDTUNE/releases).
 2. Extract it — **keep all files and folders together**.
 3. Run `VOIDTUNE.exe` (it auto-requests Administrator).
 
