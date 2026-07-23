@@ -66,6 +66,14 @@ public sealed partial class PersonalizePage : Page
         bool on = ts.IsOn;
         if (on == t.Enabled) return;   // echo from binding / realization — not a user action
 
+        // Debounce: even keyed off DataContext, a fast scroll can still catch a container
+        // mid-recycle where IsOn reflects the new item but the rest of its bindings haven't
+        // settled yet. A genuine click's mismatch is stable; a recycling artifact's resolves
+        // within a frame or two on its own — re-check before acting so scrolling alone can't
+        // flip a mod.
+        await System.Threading.Tasks.Task.Delay(120);
+        if (ts.DataContext != t || ts.IsOn != on || on == t.Enabled) return;
+
         ts.IsEnabled = false;
         await PersonalizeService.SetAsync(t.Id, on);
         t.Enabled = on;

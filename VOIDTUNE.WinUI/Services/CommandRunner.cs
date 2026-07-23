@@ -52,11 +52,28 @@ public static class CommandRunner
             // UTF-8 with BOM so PowerShell/cmd decode non-ASCII in the script correctly.
             await File.WriteAllTextAsync(file, body, new System.Text.UTF8Encoding(true));
             return powershell
-                ? await RunAsync("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -File \"{file}\"")
+                ? await RunAsync(PowerShellPath, $"-NoProfile -ExecutionPolicy Bypass -File \"{file}\"")
                 : await RunAsync("cmd.exe", $"/c \"{file}\"");
         }
         catch (Exception ex) { return new CommandResult(false, ex.Message); }
         finally { try { File.Delete(file); } catch { /* ignore */ } }
+    }
+
+    /// <summary>
+    /// Fully-qualified path to Windows PowerShell. Field-confirmed real bug: invoking the bare
+    /// "powershell.exe" name and relying on PATH search can resolve to something that isn't
+    /// real PowerShell on some systems (App Execution Alias shadowing, third-party PATH entries
+    /// ahead of System32) — the result still launches but then rejects -File with "the term
+    /// '...ps1' is not recognized", which real PowerShell never does since -File is a core
+    /// parameter it always understands. The System32 path can't be shadowed this way.
+    /// </summary>
+    private static readonly string PowerShellPath = ResolvePowerShellPath();
+
+    private static string ResolvePowerShellPath()
+    {
+        string full = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "WindowsPowerShell", "v1.0", "powershell.exe");
+        return File.Exists(full) ? full : "powershell.exe"; // defensive fallback, should never trigger
     }
 
     /// <summary>

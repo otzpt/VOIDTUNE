@@ -162,6 +162,15 @@ public sealed partial class TweaksPage : Page
         bool on = ts.IsOn;
         if (on == t.Applied) return;   // echo from binding / realization / recycling — not a user click
 
+        // Debounce: field-reported as reboot-gated tweaks flipping off mid-scroll. Even keyed off
+        // DataContext, a fast scroll can still catch a container mid-recycle where IsOn has been
+        // set to the new row's value but WinUI hasn't finished settling the rest of that row's
+        // bindings yet. A genuine user click's mismatch is stable; a recycling artifact's is not
+        // — it resolves within a frame or two on its own. Re-validate after a short delay before
+        // treating it as real, so scrolling alone can no longer apply/revert anything.
+        await System.Threading.Tasks.Task.Delay(120);
+        if (ts.DataContext != t || ts.IsOn != on || on == t.Applied) return;
+
         if (on && t.Tier == TweakTier.Extreme)
         {
             bool confirmed = await ApplyPreviewDialog.ConfirmExtremeAsync(this.XamlRoot, t);

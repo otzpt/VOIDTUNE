@@ -26,7 +26,7 @@ public sealed partial class StartupPage : Page
         CountLine.Text = $"{_mgr.Items.Count} STARTUP ENTRIES";
     }
 
-    private void Toggle_Changed(object sender, RoutedEventArgs e)
+    private async void Toggle_Changed(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
         // DataContext, not Tag: during virtualized-list container recycling, WinUI can re-fire
@@ -43,6 +43,14 @@ public sealed partial class StartupPage : Page
         // uses; TwoWay binding is what made this toggle behave inverted/randomly before.
         bool on = ts.IsOn;
         if (on == it.Enabled) return;
+
+        // Debounce: even keyed off DataContext, a fast scroll can still catch a container
+        // mid-recycle where IsOn reflects the new row but the rest of its bindings haven't
+        // settled yet. A genuine click's mismatch is stable; a recycling artifact's resolves
+        // within a frame or two on its own — re-check before acting so scrolling alone can't
+        // toggle a startup entry.
+        await System.Threading.Tasks.Task.Delay(120);
+        if (_loading || ts.DataContext != it || ts.IsOn != on || on == it.Enabled) return;
 
         _mgr.SetEnabled(it, on);   // apply to registry/folder, updates the item's label in place
         it.Enabled = on;           // sync the model; the OneWay binding re-reads it without looping

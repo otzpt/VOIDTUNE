@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.18] - 2026-07-23 (WinUI 3 edition)
+
+### Fixed — PS: tweaks could fail with "the term '...ps1' is not recognized"
+- Field-confirmed on a real machine: `CommandRunner` invoked PowerShell by the bare name `powershell.exe`, relying on PATH search — on some systems this resolves to something that isn't real PowerShell (App Execution Alias shadowing, a third-party entry ahead of System32), and the result then rejects `-File` with "not recognized," which genuine PowerShell never does since `-File` is a core parameter. Now always invokes the fully-qualified `%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe`, which can't be shadowed this way.
+
+### Fixed — reboot-gated tweaks could flip off while scrolling
+- Field-confirmed: tweaks marked "needs reboot" showed as deactivated while scrolling the Tweaks list unless the machine had already been rebooted. This is a remaining gap in 0.8.15's container-recycling fix — even keyed off `DataContext`, a fast scroll could still catch a container mid-recycle where `IsOn` had been updated to the new row's value but the rest of that row's bindings hadn't finished settling. Added a short re-validation delay before a toggle mismatch is treated as a real user action: a genuine click's mismatch is stable, a recycling artifact's resolves itself within a frame or two. Applied to the Tweaks, Startup, and Customization pages — same bug class, same fix.
+
 ## [0.8.17] - 2026-07-10 (WinUI 3 edition)
 
 ### Added — a real installer wizard (previously had none at all)
