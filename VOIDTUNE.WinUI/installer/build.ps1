@@ -1,5 +1,12 @@
 # Builds the VOIDTUNE WinUI release artifacts: a portable ZIP and an MSI installer.
 #
+# Output filenames are DELIBERATELY version-free (VOIDTUNE-Setup.msi /
+# VOIDTUNE-portable-win-x64.zip, not VOIDTUNE-0.8.x-...) — the website links directly to
+# https://github.com/otzpt/VOIDTUNE/releases/latest/download/<name>, which GitHub always
+# redirects to whatever the latest release's matching-named asset is. A stable filename
+# means that link never needs updating; -Version only flows into the package metadata
+# (Package.wxs Version attribute, HKLM registry Version value) where it's actually needed.
+#
 # Prereqs:
 #   - .NET 8 SDK
 #   - WiX v5:  dotnet tool install --global wix --version 5.0.2
@@ -50,7 +57,7 @@ if ($canSign) {
 }
 
 Write-Host "==> Creating portable ZIP..."
-$zip = Join-Path $out "VOIDTUNE-$Version-portable-win-x64.zip"
+$zip = Join-Path $out "VOIDTUNE-portable-win-x64.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($pub, $zip, 'Optimal', $false)
@@ -66,7 +73,7 @@ foreach ($ext in "WixToolset.UI.wixext", "WixToolset.Util.wixext") {
 }
 
 Write-Host "==> Building MSI..."
-$msi = Join-Path $out "VOIDTUNE-$Version-Setup.msi"
+$msi = Join-Path $out "VOIDTUNE-Setup.msi"
 Remove-Item $msi -ErrorAction SilentlyContinue
 Push-Location $PSScriptRoot
 try {
