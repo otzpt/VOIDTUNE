@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install WiX v5
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build release artifacts (portable ZIP + standalone EXE + MSI)
+        # No signing cert on the runner (codesign.pfx is gitignored/machine-local) --
+        # build.ps1 already skips signing automatically when it's absent, same as CI.
+        shell: pwsh
+        run: ./VOIDTUNE.WinUI/installer/build.ps1 -Version ${{ github.ref_name }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            VOIDTUNE.WinUI/installer/out/VOIDTUNE-portable-win-x64.zip
+            VOIDTUNE.WinUI/installer/out/VOIDTUNE-standalone-win-x64.exe
+            VOIDTUNE.WinUI/installer/out/VOIDTUNE-Setup.msi
+          name: VOIDTUNE ${{ github.ref_name }}
+          generate_release_notes: true
