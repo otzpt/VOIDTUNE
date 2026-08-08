@@ -43,6 +43,11 @@ public static class GameWatcherService
         // undo any active boost so "off" really means back-to-default
         int n = VoidSchedulerService.Instance.RestoreAll();
         RestorePowerPlanNow();
+        // Without this, a Start() after this Stop() re-reads the PID from before
+        // the stop -- Tick() then gates on a dead (usually) or, worse, a since-
+        // recycled-and-reused (rarely, but possible) PID, silently skipping game
+        // detection entirely until that unrelated process happens to exit.
+        _powerGamePid = 0;
         TweakEngine.Instance.EmitLog($"Auto Game Boost: off{(n > 0 ? $" — restored {n} processes" : "")}.");
     }
 

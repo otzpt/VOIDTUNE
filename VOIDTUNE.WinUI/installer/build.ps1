@@ -19,7 +19,7 @@
 #   - installer/Package.wxs  Package Version + registry Version
 #   - the GitHub release tag (vX.Y.Z)
 
-param([string]$Version = "0.8.1")
+param([string]$Version = "0.8.20")
 $ErrorActionPreference = "Stop"
 
 $projDir = Split-Path $PSScriptRoot -Parent
@@ -48,6 +48,13 @@ New-Item -ItemType Directory -Force $out | Out-Null
 
 Write-Host "==> Publishing self-contained win-x64..."
 dotnet publish $proj -c Release -r win-x64 --self-contained
+# $ErrorActionPreference = "Stop" only catches PowerShell-native errors -- an
+# external exe's non-zero exit code is not one of them, so without this check
+# a failed publish would fall straight through, signing/zipping/MSI-packaging
+# whatever stale build already happened to be sitting in $pub, then printing
+# "Done:" as if it had worked. The `wix build` call below already gets this
+# right; this is the same guard for the step just as capable of failing.
+if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)" }
 
 if ($canSign) {
     Write-Host "==> Signing VOIDTUNE.exe..."
@@ -61,6 +68,33 @@ $zip = Join-Path $out "VOIDTUNE-portable-win-x64.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($pub, $zip, 'Optimal', $false)
+
+# Single-file EXE: a separate publish, not a repackaging of $pub above -- Microsoft's
+# own docs (learn.microsoft.com/.../unpackage-winui-app#single-file-exe) require
+# SelfContained/PublishSingleFile/IncludeAllContentForSelfExtract together, and
+# baking those into the .csproj's main PropertyGroup would make every publish
+# single-file, breaking the portable ZIP above (which wants the plain multi-file
+# output). WindowsPackageType=None and EnableMsixTooling=true are already set
+# project-wide, which the build-time validation target requires or else errors.
+#
+# This is NOT a zero-extraction binary -- Windows App SDK dependencies extract to
+# a temp directory on first launch, same as .NET's own single-file apps generally.
+# One file to distribute, not one file with nothing else ever touching disk.
+Write-Host "==> Publishing single-file win-x64 exe..."
+$singleFilePub = Join-Path $projDir "bin\Release\net8.0-windows10.0.19041.0\win-x64\publish-singlefile"
+dotnet publish $proj -c Release -r win-x64 --self-contained `
+    -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true `
+    -o $singleFilePub
+if ($LASTEXITCODE -ne 0) { throw "single-file publish failed ($LASTEXITCODE)" }
+
+$exe = Join-Path $out "VOIDTUNE-standalone-win-x64.exe"
+Remove-Item $exe -ErrorAction SilentlyContinue
+Copy-Item (Join-Path $singleFilePub "VOIDTUNE.exe") $exe
+
+if ($canSign) {
+    Write-Host "==> Signing standalone exe..."
+    Sign-File $exe
+}
 
 Write-Host "==> Ensuring WiX UI/Util extensions are installed..."
 # -g (global/per-user cache): without it, extensions are cached per-directory and invisible to
@@ -92,4 +126,5 @@ if ($canSign) {
 Write-Host ""
 Write-Host "Done:"
 Write-Host "  $zip"
+Write-Host "  $exe"
 Write-Host "  $msi"

@@ -111,6 +111,14 @@ public static class CommandRunner
             try
             {
                 await p.WaitForExitAsync(cts.Token);
+                // The process exiting does not guarantee its pipes have hit EOF: a
+                // grandchild that inherited the stdout/stderr handles (a command
+                // that backgrounds something without disowning it) could still be
+                // holding them open, and ReadToEndAsync has no timeout of its own.
+                // Sharing the same cts, rather than starting a fresh one, keeps the
+                // whole method under one hard TimeoutSeconds ceiling instead of
+                // potentially doubling it.
+                await Task.WhenAll(stdout, stderr).WaitAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -118,7 +126,7 @@ public static class CommandRunner
                 return new CommandResult(false, $"Timed out after {TimeoutSeconds}s");
             }
 
-            string output = ((await stdout) + (await stderr)).Trim();
+            string output = (stdout.Result + stderr.Result).Trim();
             return new CommandResult(p.ExitCode == 0, output);
         }
         catch (Exception ex)

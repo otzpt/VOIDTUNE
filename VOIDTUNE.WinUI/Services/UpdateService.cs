@@ -19,7 +19,7 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.18";
+    public const string CurrentVersion = "0.8.20";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
@@ -163,7 +163,11 @@ public static class UpdateService
         string body = string.Join("\n", new[]
         {
             "$ErrorActionPreference='SilentlyContinue'",
-            $"while (Get-Process -Id {pid} -EA SilentlyContinue) {{ Start-Sleep -Milliseconds 400 }}",
+            // Bounded: this depends entirely on VOIDTUNE.exe actually exiting after
+            // Application.Current.Exit() -- true on every path that reaches here today,
+            // but with no fallback if a future shutdown handler ever hangs instead. 30s
+            // (75 * 400ms) is generous for a clean exit and still finite either way.
+            $"$vtWaited = 0; while ((Get-Process -Id {pid} -EA SilentlyContinue) -and $vtWaited -lt 30000) {{ Start-Sleep -Milliseconds 400; $vtWaited += 400 }}",
             "Start-Sleep -Seconds 1",
             // No -Verb RunAs: this script's own process already inherited VOIDTUNE.exe's
             // elevated token (requireAdministrator manifest), so msiexec runs elevated too
@@ -190,7 +194,11 @@ public static class UpdateService
         string body = string.Join("\n", new[]
         {
             "$ErrorActionPreference='SilentlyContinue'",
-            $"while (Get-Process -Id {pid} -EA SilentlyContinue) {{ Start-Sleep -Milliseconds 400 }}",
+            // Bounded: this depends entirely on VOIDTUNE.exe actually exiting after
+            // Application.Current.Exit() -- true on every path that reaches here today,
+            // but with no fallback if a future shutdown handler ever hangs instead. 30s
+            // (75 * 400ms) is generous for a clean exit and still finite either way.
+            $"$vtWaited = 0; while ((Get-Process -Id {pid} -EA SilentlyContinue) -and $vtWaited -lt 30000) {{ Start-Sleep -Milliseconds 400; $vtWaited += 400 }}",
             "Start-Sleep -Seconds 1",
             "$tmp = Join-Path $env:TEMP ('vt_unzip_' + [guid]::NewGuid().ToString('N'))",
             $"Expand-Archive -Path '{zipPath}' -DestinationPath $tmp -Force",

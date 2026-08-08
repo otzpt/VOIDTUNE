@@ -5,7 +5,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
-  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.18.0"
+  <Package Name="VOIDTUNE" Manufacturer="otzpt" Version="0.8.20.0"
            UpgradeCode="7C9E6A2F-4B1D-4A8E-9F3C-2E6D5B8A1C40"
            Scope="perMachine" InstallerVersion="500">
 
@@ -59,7 +59,7 @@
     <Component Id="RegistryEntries" Directory="INSTALLFOLDER" Guid="*">
       <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="InstallPath" Type="string"
                      Value="[INSTALLFOLDER]" KeyPath="yes" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.18" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\VOIDTUNE" Name="Version" Type="string" Value="0.8.20" />
     </Component>
 
     <Component Id="StartMenuShortcut" Directory="ShortcutFolder" Guid="*">
