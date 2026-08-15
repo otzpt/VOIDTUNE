@@ -1,16 +1,20 @@
 # VOIDTUNE
 
-Windows optimization and debloating tool for gamers and power users. Native WinUI 3 (C# / .NET 8) application.
+Windows optimization and debloating tool for gamers and power users.
+
+VOIDTUNE is a native WinUI 3 application built in C#/.NET 8. It provides reversible system tweaks, diagnostics, service management, and debloating for Windows 10/11.
 
 ## Status
 
-0.8.20, actively maintained. Windows 10 (build 19041+) and Windows 11, x64.
+0.8.20 — actively maintained. Windows 10 (build 19041+) and Windows 11, x64.
 
-The original PowerShell + WPF edition has been removed from this repository, fully superseded by the WinUI 3 rewrite below.
+## Why VOIDTUNE
+
+VOIDTUNE began as a PowerShell + WPF tool and was rewritten from scratch as a native WinUI 3 application; the original edition has been removed from this repository. Every apply takes a registry backup first, and every tweak reverts — the project would rather cut a tweak than ship one nobody's checked. The 0.8.14 turbo-boost regression is the kind of mistake that bar exists to catch: a mislabeled tweak was silently capping CPU boost machine-wide, confirmed on real hardware by a 350→140 FPS drop, and removed the same release.
 
 ## Features
 
-- ~175 reversible tweaks across CPU, GPU, RAM, network, power, latency, and background processes, tiered SAFE / EXTREME / NUCLEAR
+- 177 reversible tweaks across CPU, GPU, RAM, network, power, latency, and background processes, tiered SAFE / EXTREME / NUCLEAR
 - Architecture-specific tweaks gated on detected hardware (Intel/AMD CPU, NVIDIA/AMD GPU, laptop vs desktop)
 - Registry backup before every apply, individual revert, and one-click reset to Windows defaults
 - Service manager with Gaming/Normal profiles

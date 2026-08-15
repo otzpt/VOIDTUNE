@@ -1,6 +1,6 @@
 # Tweaks
 
-~175 tweaks. Every entry has been individually verified rather than added wholesale — see [../CHANGELOG.md](../CHANGELOG.md) for tweaks that were removed after turning out to be harmful or placebo.
+177 tweaks, each kept because it does something specific and measurable. ~27 were cut in a single pass (0.8.10) after being traced against real FPS numbers and found to do nothing or hurt — see [../CHANGELOG.md](../CHANGELOG.md) for the rest of what got removed and why.
 
 ## Tiers
 
