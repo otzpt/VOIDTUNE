@@ -14,7 +14,7 @@ VOIDTUNE began as a PowerShell + WPF tool and was rewritten from scratch as a na
 
 ## Features
 
-- 177 reversible tweaks across CPU, GPU, RAM, network, power, latency, and background processes, tiered SAFE / EXTREME / NUCLEAR
+- 177 reversible tweaks across CPU, GPU, RAM, network, power, latency, and background processes, tiered SAFE / EXTREME
 - Architecture-specific tweaks gated on detected hardware (Intel/AMD CPU, NVIDIA/AMD GPU, laptop vs desktop)
 - Registry backup before every apply, individual revert, and one-click reset to Windows defaults
 - Service manager with Gaming/Normal profiles
