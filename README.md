@@ -42,6 +42,8 @@ Download from [Releases](https://github.com/otzpt/VOIDTUNE/releases):
 - `VOIDTUNE-standalone-win-x64.exe` — single signed executable, no install
 - `VOIDTUNE-portable-win-x64.zip` — extract and run, keep the folder together
 
+Release builds are Authenticode-signed with a self-signed certificate, which Windows does not treat as trusted — expect a SmartScreen "unknown publisher" warning regardless. VOIDTUNE has applied to the [SignPath Foundation](https://signpath.io/solutions/open-source-community)'s free code-signing program for open source projects to replace this with a real trusted certificate.
+
 ## Usage
 
 Launch VOIDTUNE; it elevates automatically. On the Tweaks page, browse by category or tier and apply individually, or use Apply SAFE / Apply EXTREME to review and confirm a batch. Every applied tweak can be reverted from the same page or from Restore.
