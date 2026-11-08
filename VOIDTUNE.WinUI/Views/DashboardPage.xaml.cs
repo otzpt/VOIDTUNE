@@ -49,7 +49,7 @@ public sealed partial class DashboardPage : Page
         _timer.Start();
         HwLine.Text = $"CPU: {HardwareInfo.CpuVendor} [{HardwareInfo.CpuName}]  ·  GPU: {HardwareInfo.GpuName}  ·  " +
                       $"RAM: {HardwareInfo.TotalRamGb:0} GB  ·  Build: {HardwareInfo.WinBuild}  ·  " +
-                      $"{(HardwareInfo.IsLaptop ? "LAPTOP" : "DESKTOP")}  ·  {_engine.Tweaks.Count} tweaks · running as Administrator";
+                      $"{(HardwareInfo.IsLaptop ? "LAPTOP" : "DESKTOP")}  ·  {_engine.ToggleableCount} tweaks · running as Administrator";
         CpuChip.Text = HardwareInfo.CpuName.Trim();
         GpuChip.Text = HardwareInfo.GpuName.Trim();
         RamChip.Text = $"{HardwareInfo.TotalRamGb:0} GB RAM";
@@ -108,7 +108,7 @@ public sealed partial class DashboardPage : Page
 
         int applied = _engine.AppliedCount;
         AppliedValue.Text = applied.ToString();
-        AppliedOf.Text = $"of {_engine.Tweaks.Count} in the catalog";
+        AppliedOf.Text = $"of {_engine.ToggleableCount} in the catalog";
 
         var up = TimeSpan.FromMilliseconds(Environment.TickCount64);
         UptimeChip.Text = up.TotalDays >= 1 ? $"UP {(int)up.TotalDays}d {up.Hours}h" : $"UP {up.Hours}h {up.Minutes}m";

@@ -93,6 +93,9 @@ public sealed class TweakEngine
 
     public int AppliedCount => Tweaks.Count(t => t.Applied);
 
+    /// <summary>Tweaks a user can toggle, leaving out the Restore page's one-shot reset actions.</summary>
+    public int ToggleableCount => Tweaks.Count(t => !t.IsResetAction);
+
     /// <summary>The failed tweaks (with their raw command output) from the most recent ApplyAsync
     /// call, so the UI can show exactly what went wrong instead of just a count.</summary>
     public IReadOnlyList<(Tweak Tweak, string Output)> LastApplyFailures { get; private set; } = Array.Empty<(Tweak, string)>();

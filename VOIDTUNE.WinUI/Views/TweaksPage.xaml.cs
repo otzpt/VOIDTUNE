@@ -138,10 +138,10 @@ public sealed partial class TweaksPage : Page
 
     private void UpdateCount(int? shown = null)
     {
-        int shownN = shown ?? _engine.Tweaks.Count;
+        int shownN = shown ?? _engine.ToggleableCount;
         CountLine.Text = $"{shownN} shown · {_engine.AppliedCount} applied";
         HeroApplied.Text = _engine.AppliedCount.ToString();
-        HeroTotal.Text = _engine.Tweaks.Count.ToString();
+        HeroTotal.Text = _engine.ToggleableCount.ToString();
         HeroShown.Text = shownN.ToString();
     }
 
