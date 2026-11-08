@@ -113,9 +113,9 @@ public sealed partial class DashboardPage : Page
         var up = TimeSpan.FromMilliseconds(Environment.TickCount64);
         UptimeChip.Text = up.TotalDays >= 1 ? $"UP {(int)up.TotalDays}d {up.Hours}h" : $"UP {up.Hours}h {up.Minutes}m";
 
-        // honest health: load + pressure, small bonus for an optimized box
-        double score = 100 - cpu * 0.30 - pct * 0.35 - Math.Max(0, proc - 230) * 0.10 + (applied > 0 ? 4 : 0);
-        _targetScore = Math.Clamp(score, 0, 100);
+        var systemDrive = new DriveInfo(System.IO.Path.GetPathRoot(Environment.SystemDirectory)!);
+        double diskUsed = 100.0 * (systemDrive.TotalSize - systemDrive.TotalFreeSpace) / systemDrive.TotalSize;
+        _targetScore = HealthScore.Compute(cpu, pct, diskUsed, proc, HealthScore.IsRebootPending());
         if (!_ringAnim.IsEnabled) _ringAnim.Start();
 
         StatusChip.Text = _targetScore >= 80 ? "SYSTEM NOMINAL" : _targetScore >= 55 ? "ELEVATED LOAD" : "UNDER PRESSURE";
@@ -320,7 +320,8 @@ public sealed partial class DashboardPage : Page
 
     private async void ApplySafe_Click(object sender, RoutedEventArgs e)
     {
-        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe).ToList();
+        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe && !t.Applied && !t.IsResetAction).ToList();
+        if (safe.Count == 0) { ShowStatus("No SAFE tweaks left to apply, everything is already active.", InfoBarSeverity.Informational); return; }
         var confirmed = await Views.ApplyPreviewDialog.ShowAsync(this.XamlRoot, "Apply SAFE tweaks",
             $"VOIDTUNE is about to apply {safe.Count} SAFE tweaks. Uncheck anything you don't want — nothing runs until you hit Apply.", safe);
         if (confirmed is null) return;                                   // cancelled

@@ -37,6 +37,11 @@
     <Compile Include="..\VOIDTUNE.WinUI\Services\VoidSchedulerService.cs" Link="Source\VoidSchedulerService.cs" />
     <Compile Include="..\VOIDTUNE.WinUI\Services\StressTestService.cs" Link="Source\StressTestService.cs" />
     <Compile Include="..\VOIDTUNE.WinUI\Services\FallbackSynth.cs" Link="Source\FallbackSynth.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\TweakVerifier.cs" Link="Source\TweakVerifier.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\AppSettingsStore.cs" Link="Source\AppSettingsStore.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\CpuProfile.cs" Link="Source\CpuProfile.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\HealthScore.cs" Link="Source\HealthScore.cs" />
+    <Compile Include="..\VOIDTUNE.WinUI\Services\StartupTarget.cs" Link="Source\StartupTarget.cs" />
   </ItemGroup>
 
 </Project>

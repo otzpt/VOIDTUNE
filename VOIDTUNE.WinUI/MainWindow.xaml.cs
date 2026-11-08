@@ -116,13 +116,9 @@ public sealed partial class MainWindow : Window
                 "services"    => typeof(ServicesPage),
                 "startup"     => typeof(StartupPage),
                 "personalize" => typeof(PersonalizePage),
-                "drivers"     => typeof(DriversPage),
-                "gpu"         => typeof(GpuHealthPage),
                 "latency"     => typeof(LatencyPage),
                 "bench"       => typeof(BenchmarksPage),
-                "apps"        => typeof(AppsPage),
                 "backup"      => typeof(BackupPage),
-                "script"      => typeof(ScriptPage),
                 "devtools"    => typeof(DevToolsPage),
                 _             => typeof(DashboardPage),
             };

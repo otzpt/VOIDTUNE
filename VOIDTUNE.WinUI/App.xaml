@@ -25,7 +25,6 @@
             <SolidColorBrush x:Key="BrandPink"        Color="#F472B6" />
             <SolidColorBrush x:Key="SafeGreen"        Color="#22C55E" />
             <SolidColorBrush x:Key="ExtremeViolet"    Color="#A855F7" />
-            <SolidColorBrush x:Key="NuclearRed"       Color="#EF4444" />
             <SolidColorBrush x:Key="WarnAmber"        Color="#F59E0B" />
             <SolidColorBrush x:Key="InfoBlue"         Color="#38BDF8" />
 

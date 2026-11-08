@@ -19,7 +19,7 @@
 #   - installer/Package.wxs  Package Version + registry Version
 #   - the GitHub release tag (vX.Y.Z)
 
-param([string]$Version = "0.8.20")
+param([string]$Version = "0.8.21")
 $ErrorActionPreference = "Stop"
 
 $projDir = Split-Path $PSScriptRoot -Parent

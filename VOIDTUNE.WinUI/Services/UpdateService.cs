@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace VOIDTUNE.WinUI.Services;
 
-public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, string MsiUrl, string PageUrl);
+public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, string MsiUrl, string PageUrl, string ZipSha256, string MsiSha256);
 
 /// <summary>
 /// In-app updater. Checks the latest GitHub release, compares versions and applies the
@@ -19,10 +20,11 @@ public sealed record UpdateInfo(string Version, string Notes, string ZipUrl, str
 public static class UpdateService
 {
     /// <summary>Current app version. Keep in sync with the .csproj &lt;Version&gt; and the release tag.</summary>
-    public const string CurrentVersion = "0.8.20";
+    public const string CurrentVersion = "0.8.21";
 
     private const string LatestApi = "https://api.github.com/repos/otzpt/VOIDTUNE/releases/latest";
     private const string RegPath = @"SOFTWARE\VOIDTUNE";
+    private const string ReleaseDownloadPrefix = "https://github.com/otzpt/VOIDTUNE/releases/download/";
 
     /// <summary>The most recent update found by CheckAsync (so the Settings page can show it after navigation).</summary>
     public static UpdateInfo? Pending { get; private set; }
@@ -64,41 +66,42 @@ public static class UpdateService
         }
     }
 
-    /// <summary>Returns update info if the latest release is newer than the running build, else null.</summary>
+    /// <summary>Returns update info if the latest release is newer than the running build, else
+    /// null. Throws when the check itself fails, so callers can tell that apart from "up to date".</summary>
     public static async Task<UpdateInfo?> CheckAsync()
     {
-        try
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("VOIDTUNE-Updater");
+        http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+
+        string json = await http.GetStringAsync(LatestApi);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        string tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
+        string latest = tag.TrimStart('v', 'V');
+        // The version ends up inside generated PowerShell, so only digits and dots may pass.
+        if (!System.Text.RegularExpressions.Regex.IsMatch(latest, @"^\d+(\.\d+){0,3}$")) return null;
+        if (!IsNewer(latest, CurrentVersion)) return null;
+
+        string notes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
+        string page = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : "";
+
+        string zip = "", msi = "", zipHash = "", msiHash = "";
+        if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("VOIDTUNE-Updater");
-            http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-
-            string json = await http.GetStringAsync(LatestApi);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            string tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
-            string latest = tag.TrimStart('v', 'V');
-            if (latest.Length == 0 || !IsNewer(latest, CurrentVersion)) return null;
-
-            string notes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
-            string page = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : "";
-
-            string zip = "", msi = "";
-            if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+            foreach (var a in assets.EnumerateArray())
             {
-                foreach (var a in assets.EnumerateArray())
-                {
-                    string name = a.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                    string url = a.TryGetProperty("browser_download_url", out var u) ? u.GetString() ?? "" : "";
-                    if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) zip = url;
-                    else if (name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase)) msi = url;
-                }
+                string name = a.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                string url = a.TryGetProperty("browser_download_url", out var u) ? u.GetString() ?? "" : "";
+                string digest = a.TryGetProperty("digest", out var d) ? d.GetString() ?? "" : "";
+                string hash = digest.StartsWith("sha256:", StringComparison.Ordinal) ? digest[7..] : "";
+                if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) { zip = url; zipHash = hash; }
+                else if (name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase)) { msi = url; msiHash = hash; }
             }
-            Pending = new UpdateInfo(latest, notes, zip, msi, page);
-            return Pending;
         }
-        catch { return null; }
+        Pending = new UpdateInfo(latest, notes, zip, msi, page, zipHash, msiHash);
+        return Pending;
     }
 
     /// <summary>Downloads and starts applying the update. On success the caller must exit the app.</summary>
@@ -109,7 +112,16 @@ public static class UpdateService
         if (url.Length == 0) url = info.MsiUrl.Length > 0 ? info.MsiUrl : info.ZipUrl;
         if (url.Length == 0) return (false, "No downloadable asset was found on the release.");
 
+        // SIMPLIFICATION: the digest comes from the same GitHub API as the file, so this catches
+        // corruption and tampering in transit but not a compromised release. Closing that gap
+        // needs signed release builds and a pinned certificate or public key in this file.
         bool isMsi = url.EndsWith(".msi", StringComparison.OrdinalIgnoreCase);
+        string expectedHash = isMsi ? info.MsiSha256 : info.ZipSha256;
+        if (!url.StartsWith(ReleaseDownloadPrefix, StringComparison.OrdinalIgnoreCase))
+            return (false, "Update refused: the download is not hosted on this project's GitHub releases.");
+        if (expectedHash.Length == 0)
+            return (false, "Update refused: the release has no published SHA-256 digest.");
+
         string file = Path.Combine(Path.GetTempPath(), $"VOIDTUNE_update_{info.Version}{(isMsi ? ".msi" : ".zip")}");
 
         try
@@ -119,6 +131,8 @@ public static class UpdateService
             {
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("VOIDTUNE-Updater");
                 var bytes = await http.GetByteArrayAsync(url);
+                if (!Convert.ToHexString(SHA256.HashData(bytes)).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                    return (false, "Update refused: the download does not match the release's SHA-256 digest.");
                 await File.WriteAllBytesAsync(file, bytes);
             }
 

@@ -160,6 +160,8 @@ public sealed class ServiceManager
 
     public async Task ApplyNormalProfileAsync()
     {
+        // Must cover every entry in GamingDisable. Start types mirror each service's RevertCmd
+        // in TweakCatalog, except dmwappushservice, whose demand value is an assumption.
         var restore = new Dictionary<string, string>
         {
             ["SysMain"] = "auto", ["WSearch"] = "auto", ["bthserv"] = "auto",
@@ -167,12 +169,21 @@ public sealed class ServiceManager
             ["TabletInputService"] = "demand", ["lfsvc"] = "demand", ["AJRouter"] = "demand",
             ["SEMgrSvc"] = "demand", ["SensorService"] = "demand", ["PcaSvc"] = "auto",
             ["CDPSvc"] = "auto", ["DPS"] = "auto", ["W32Time"] = "demand",
+            ["DiagTrack"] = "auto", ["dmwappushservice"] = "demand",
+            ["XblAuthManager"] = "demand", ["XblGameSave"] = "demand",
+            ["XboxNetApiSvc"] = "demand", ["XboxGipSvc"] = "demand",
+            ["MapsBroker"] = "demand", ["WMPNetworkSvc"] = "demand", ["Fax"] = "demand",
+            ["WbioSrvc"] = "demand", ["RetailDemo"] = "demand", ["WerSvc"] = "demand",
+            ["TrkWks"] = "auto", ["SSDPSRV"] = "demand", ["upnphost"] = "demand",
+            ["SCardSvr"] = "demand", ["stisvc"] = "demand", ["PhoneSvc"] = "demand",
+            ["icssvc"] = "demand", ["wisvc"] = "demand", ["SharedAccess"] = "demand",
         };
         await Parallel.ForEachAsync(restore, new ParallelOptions { MaxDegreeOfParallelism = MaxParallel },
             async (kv, _) =>
             {
                 await CommandRunner.ExecAsync($"sc config {kv.Key} start= {kv.Value} & exit /b 0");
-                await Task.Run(() => ChangeRunState(kv.Key, true));
+                // Demand-start services stay stopped until Windows triggers them.
+                if (kv.Value == "auto") await Task.Run(() => ChangeRunState(kv.Key, true));
             });
         Refresh();
     }

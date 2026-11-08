@@ -110,12 +110,18 @@ public sealed class TweakEngine
         if (list.Count == 0) return (0, 0);
 
         // Bulk applies snapshot the registry first; single toggles skip it (kept snappy).
+        var keys = list.SelectMany(t => TweakVerifier.RegistryKeys(t.ApplyCmd)).ToList();
         if (backup)
         {
             // Total == 0 tells the dialog to show an indeterminate bar for the backup phase.
             progress?.Report(new TweakProgress("Creating registry backup…", 0, 0));
-            string b = await BackupService.CreateAsync("apply");
+            string b = await BackupService.CreateAsync("apply", keys);
             if (!string.IsNullOrEmpty(b)) Log?.Invoke($"Registry backup: {b}");
+        }
+        else if (keys.Count > 0)
+        {
+            await BackupService.CreateAsync("toggle", keys, includeBaseKeys: false);
+            BackupService.Prune("toggle", keep: 20);
         }
 
         // The commands are independent registry/power writes, so run them concurrently
@@ -124,14 +130,14 @@ public sealed class TweakEngine
         // thread, so we never raise PropertyChanged from a worker thread.
         var results = await RunBatchAsync(list, t => t.ApplyCmd, progress, "Applying");
 
-        // Layer 1 — outcome over exit code: netsh/sc/reg return non-zero for benign reasons.
-        // If the command "failed" but the system already shows the desired state, it's applied.
+        // Layer 1: live system state decides whenever it can be read, in both directions. Exit
+        // codes lie both ways: netsh/sc/reg can fail benignly, and "& exit /b 0" hides real failures.
         // No awaits in this pass, so a run of failures can't add sequential latency here.
         var outcome = new Dictionary<Tweak, (bool Ok, bool ExitOk, string Output)>();
         var fallbackCmd = new Dictionary<Tweak, string>();
         foreach (var (t, success, output) in results)
         {
-            bool applied = success || TweakVerifier.IsApplied(t) == true;
+            bool applied = TweakVerifier.IsApplied(t) ?? success;
             if (!applied)
             {
                 string fb = !string.IsNullOrEmpty(t.FallbackCmd) ? t.FallbackCmd : FallbackSynth.ForCommand(t.ApplyCmd);
@@ -154,7 +160,7 @@ public sealed class TweakEngine
             foreach (var (t, fbSuccess, fbOutput) in fbResults)
             {
                 Log?.Invoke($"  retrying via fallback: {t.Name}");
-                bool applied = fbSuccess || TweakVerifier.IsApplied(t) == true;
+                bool applied = TweakVerifier.IsApplied(t) ?? fbSuccess;
                 outcome[t] = (applied, fbSuccess, fbOutput);
             }
         }
@@ -168,7 +174,7 @@ public sealed class TweakEngine
             Log?.Invoke($"Applying: {t.Name}");
             if (o.Ok)
             {
-                t.Applied = true; ok++;
+                t.Applied = !t.IsResetAction; ok++;
                 Log?.Invoke(o.ExitOk ? $"  OK  {t.Name}" : $"  OK (verified)  {t.Name}");
                 logEntries.Add((t, true, o.Output));
             }
@@ -202,7 +208,7 @@ public sealed class TweakEngine
         var fallbackCmd = new Dictionary<Tweak, string>();
         foreach (var (t, success, output) in results)
         {
-            bool ok = success || TweakVerifier.IsApplied(t) == false;
+            bool ok = TweakVerifier.Verify(t.RevertCmd) ?? success;
             if (ok) { reverted.Add(t); continue; }
 
             // Same second-method safety net as apply — a revert that silently fails is worse
@@ -220,7 +226,7 @@ public sealed class TweakEngine
             foreach (var (t, fbSuccess, _) in fbResults)
             {
                 Log?.Invoke($"  retrying revert via fallback: {t.Name}");
-                if (fbSuccess || TweakVerifier.IsApplied(t) == false) reverted.Add(t);
+                if (TweakVerifier.Verify(t.RevertCmd) ?? fbSuccess) reverted.Add(t);
             }
         }
 
@@ -230,8 +236,9 @@ public sealed class TweakEngine
             Log?.Invoke($"Reverting: {t.Name}");
             if (reverted.Contains(t)) ok2++; else { fail++; Log?.Invoke($"  FAILED  {t.Name}: {FirstLine(output)}"); }
         }
-        // Every requested tweak is marked reverted, even the no-op (empty RevertCmd) ones.
-        foreach (var t in list) { t.Applied = false; t.Selected = false; }
+        // A failed revert stays applied, so it remains visible and can be retried.
+        var stillApplied = results.Select(r => r.Tweak).Where(t => !reverted.Contains(t)).ToHashSet();
+        foreach (var t in list.Where(t => !stillApplied.Contains(t))) { t.Applied = false; t.Selected = false; }
         SaveState();
         return (ok2, fail);
     }
@@ -261,7 +268,7 @@ public sealed class TweakEngine
     }
 
     public Task<(int ok, int fail)> ApplyTierAsync(TweakTier maxTier)
-        => ApplyAsync(Tweaks.Where(t => (int)t.Tier <= (int)maxTier));
+        => ApplyAsync(Tweaks.Where(t => (int)t.Tier <= (int)maxTier && !t.IsResetAction));
 
     public Task<(int ok, int fail)> RevertAllAsync()
         => RevertAsync(Tweaks.Where(t => t.Applied).ToList());
@@ -279,7 +286,7 @@ public sealed class TweakEngine
             foreach (var t in Tweaks)
             {
                 bool? verified = TweakVerifier.IsApplied(t);   // reads the live registry
-                t.Applied = verified ?? saved.Contains(t.Id);
+                t.Applied = !t.IsResetAction && (verified ?? saved.Contains(t.Id));
             }
             SaveState();   // persist the reconciled truth
         }

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.8.21 - 2026-11-08
+
+### Added
+- Telemetry tweaks: minimum diagnostic data policy, advertising ID, typing and inking collection, device census tasks
+- Extreme tweaks: disable Inventory and Data Usage services, remove the Copilot app, remove the Widgets host
+- Recall removal policy, and a background apps policy alongside the per-user setting
+- CPU generation detection. Dual-CCD X3D and 13th/14th gen Intel desktop CPUs get the Balanced-based power plan
+- Microcode warning for 13th/14th gen Intel CPUs older than 0x12F
+- Startup page reads Task Manager's enabled state, includes 32-bit machine-wide entries, and flags entries and shortcuts whose target is gone
+
+### Changed
+- Success is decided from live registry, service and scheduled task state, in both directions, instead of exit codes
+- Tweaks whose services and tasks don't exist on this machine are hidden
+- Health score counts disk space and pending reboots, and no longer penalizes normal RAM use. Latency score covers disk, memory and network
+- Bulk applies back up every registry key they touch. Single toggles keep a rolling backup of their own keys
+- The updater checks the published SHA-256 digest and only downloads from this project's releases
+- Importing a share code shows its commands and requires confirmation
+- settings.json is written atomically and falls back to its previous copy if corrupt
+
+### Fixed
+- Apply SAFE ran the Restore page's reset actions alongside the tweaks they undo
+- App removal tweaks passed a list to Get-AppxPackage, which always failed silently while reporting success
+- A failed revert was marked as reverted
+- Reverts that left values behind, including several that restored only the first of a chained set
+- MSI mode and write cache reverts forced 0 instead of restoring the previous value
+- Normal service profile skipped 21 of the 31 services the Gaming profile disables
+- Disk and memory benchmarks measured the page cache and CPU prefetcher
+- Update checks reported "up to date" when the check failed
+
+### Removed
+- Tweaks whose registry values appear in no Windows binary of build 26200: IRQ8 Priority, Distribute Timers, AMD CPPC Perf, Async Present, D3D12 Independent Flip, Async Compute, No Framebuffer Compression, DWM Queue Size, Audio Enhancements, Exclusive Audio Mode, Audio Logging, and NVIDIA Max Performance, Shader Cache, HDCP Off, PCIe Max Link, No Power Gating
+- Optimal Page File, which had no effect under automatic pagefile management
+- Duplicates of other tweaks: deb1, deb21, deb40, lat1, p8, bg1, slim14, slim16, slim40
+- Apps, Script Runner, Drivers, GPU Health, Privacy pages and the DevTools console
+
 ## 0.8.20 - 2026-08-08
 
 ### Added

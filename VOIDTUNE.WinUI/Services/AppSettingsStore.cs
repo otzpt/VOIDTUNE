@@ -15,6 +15,8 @@ public static class AppSettingsStore
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VOIDTUNE");
     private static readonly string SettingsPath = Path.Combine(Dir, "settings.json");
     private static readonly string LegacyApplied = Path.Combine(Dir, "applied.txt");
+    private static readonly string BackupSettingsPath = SettingsPath + ".bak";
+    private static readonly object SaveLock = new();
 
     private sealed class Model
     {
@@ -87,10 +89,18 @@ public static class AppSettingsStore
 
     private static Model Load()
     {
+        foreach (string path in new[] { SettingsPath, BackupSettingsPath })
+        {
+            try
+            {
+                if (!File.Exists(path)) continue;
+                var loaded = JsonSerializer.Deserialize<Model>(File.ReadAllText(path));
+                if (loaded is not null) return loaded;
+            }
+            catch { /* corrupt: try the previous good copy */ }
+        }
         try
         {
-            if (File.Exists(SettingsPath))
-                return JsonSerializer.Deserialize<Model>(File.ReadAllText(SettingsPath)) ?? new Model();
             if (File.Exists(LegacyApplied))
                 return new Model { AppliedTweaks = new List<string>(File.ReadAllLines(LegacyApplied)) };
         }
@@ -98,13 +108,21 @@ public static class AppSettingsStore
         return new Model();
     }
 
+    // Written to a temp file and swapped in, so a crash or power cut mid-write can't leave
+    // settings.json truncated. The replaced version stays as settings.json.bak.
     public static void Save()
     {
-        try
+        lock (SaveLock)
         {
-            Directory.CreateDirectory(Dir);
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_m, new JsonSerializerOptions { WriteIndented = true }));
+            try
+            {
+                Directory.CreateDirectory(Dir);
+                string tmp = SettingsPath + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(_m, new JsonSerializerOptions { WriteIndented = true }));
+                if (File.Exists(SettingsPath)) File.Replace(tmp, SettingsPath, BackupSettingsPath, ignoreMetadataErrors: true);
+                else File.Move(tmp, SettingsPath);
+            }
+            catch { /* settings stay in memory for this session */ }
         }
-        catch { /* ignore */ }
     }
 }

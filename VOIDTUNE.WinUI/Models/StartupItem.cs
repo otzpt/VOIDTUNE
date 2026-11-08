@@ -13,6 +13,9 @@ public partial class StartupItem : ObservableObject
     [ObservableProperty] private bool _enabled;
     [ObservableProperty] private bool _busy;
 
+    /// <summary>True when the command or shortcut points at a file that no longer exists.</summary>
+    public bool Missing { get; init; }
+
     /// <summary>
     /// Last state actually committed to the system. Lets the page tell a real user toggle
     /// apart from the echo the TwoWay IsOn binding raises when a container is (re)realized —

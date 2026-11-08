@@ -22,9 +22,7 @@ public class TweakCatalogIntegrityTests
     private static readonly HashSet<string> OneShotIds = new()
     {
         "ram3",  // Clear Temp & DNS
-        "ram7",  // Optimal Page File
         "stor3", // TRIM All SSDs
-        "pow3",  // Ultimate Performance — undone via rst2 "Restore Power"
         "rst1", "rst2", "rst3", "rst4", "rst5", "rst6", "rst7", // Restore category
     };
 

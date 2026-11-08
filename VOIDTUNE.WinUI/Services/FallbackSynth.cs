@@ -18,7 +18,7 @@ public static class FallbackSynth
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>Registry Start values per SCM start type.</summary>
-    private static int StartValue(string mode) => mode.ToLowerInvariant() switch
+    internal static int StartValue(string mode) => mode.ToLowerInvariant() switch
     {
         "disabled" => 4,
         "demand" => 3,

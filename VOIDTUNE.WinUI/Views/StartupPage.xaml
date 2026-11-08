@@ -42,7 +42,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                    <Border Visibility="{x:Bind Missing}" Background="#3D1F1F" BorderBrush="#EF4444"
+                                            BorderThickness="1" CornerRadius="4" Padding="5,0" VerticalAlignment="Center">
+                                        <TextBlock Text="TARGET MISSING" FontSize="9" FontFamily="Consolas"
+                                                   Foreground="#EF4444" />
+                                    </Border>
+                                </StackPanel>
                                 <TextBlock Text="{x:Bind Command}" Opacity="0.5" FontSize="11" FontFamily="Consolas"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>

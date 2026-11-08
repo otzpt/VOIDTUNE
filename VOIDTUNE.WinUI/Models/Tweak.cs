@@ -5,8 +5,7 @@ namespace VOIDTUNE.WinUI.Models;
 public enum TweakTier
 {
     Safe,
-    Extreme,
-    Nuclear
+    Extreme
 }
 
 /// <summary>A single reversible system tweak. Mirrors the [TI] model from the PowerShell edition.</summary>
@@ -39,11 +38,13 @@ public partial class Tweak : ObservableObject
     [ObservableProperty] private bool _applied;
     [ObservableProperty] private bool _selected;
 
+    /// <summary>Restore-page actions undo other tweaks, so bulk applies must never include them.</summary>
+    public bool IsResetAction => Category == "Restore";
+
     public string TierLabel => Tier switch
     {
         TweakTier.Safe => "SAFE",
         TweakTier.Extreme => "EXTREME",
-        TweakTier.Nuclear => "NUCLEAR",
         _ => ""
     };
 
@@ -51,7 +52,6 @@ public partial class Tweak : ObservableObject
     {
         TweakTier.Safe => "#22C55E",
         TweakTier.Extreme => "#A855F7",
-        TweakTier.Nuclear => "#EF4444",
         _ => "#888888"
     };
 }

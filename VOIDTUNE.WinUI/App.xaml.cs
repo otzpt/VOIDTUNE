@@ -10,7 +10,16 @@ public partial class App : Application
 {
     public static Window? MainWindow { get; private set; }
 
-    private static readonly string CrashLog = Path.Combine(Path.GetTempPath(), "voidtune_winui_crash.log");
+    private static void LogCrash(string source, object detail)
+    {
+        try
+        {
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VOIDTUNE", "logs");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "crash.log"), $"{DateTime.Now:O} [{source}]\n{detail}\n\n");
+        }
+        catch { /* nothing left to report to */ }
+    }
 
     public App()
     {
@@ -26,13 +35,18 @@ public partial class App : Application
         }
 
         this.InitializeComponent();
+        // A failed click handler should not take the app down mid-apply. State is safe to keep
+        // using because tweak state is re-read from the system, not held only in memory.
         this.UnhandledException += (s, e) =>
         {
-            try { File.WriteAllText(CrashLog, $"{DateTime.Now}\n{e.Message}\n{e.Exception}"); } catch { }
+            LogCrash("UI", e.Exception);
+            e.Handled = true;
         };
-        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        AppDomain.CurrentDomain.UnhandledException += (s, e) => LogCrash("DOMAIN", e.ExceptionObject);
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, e) =>
         {
-            try { File.WriteAllText(CrashLog, $"{DateTime.Now}\nDOMAIN\n{e.ExceptionObject}"); } catch { }
+            LogCrash("TASK", e.Exception);
+            e.SetObserved();
         };
     }
 
@@ -75,7 +89,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            try { File.WriteAllText(CrashLog, $"{DateTime.Now}\nONLAUNCHED\n{ex}"); } catch { }
+            LogCrash("LAUNCH", ex);
             throw;
         }
     }

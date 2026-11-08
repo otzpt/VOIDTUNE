@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using VOIDTUNE.WinUI.Models;
 
@@ -28,23 +29,51 @@ public static class BackupService
     };
 
     /// <summary>Creates a backup folder with one .reg export per key. Returns the folder name (or empty on failure).</summary>
-    public static async Task<string> CreateAsync(string note)
+    public static async Task<string> CreateAsync(string note, IEnumerable<string>? tweakKeys = null, bool includeBaseKeys = true)
     {
         try
         {
             string folder = Path.Combine(BackupRoot, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}_{note}");
             Directory.CreateDirectory(folder);
-            // Each export spawns its own reg.exe; they touch different keys and are
-            // independent, so run them concurrently instead of one-at-a-time.
-            var exports = Keys.Select((key, i) =>
-                CommandRunner.ExecAsync($"reg export \"{key}\" \"{Path.Combine(folder, $"key{i}.reg")}\" /y"));
-            await Task.WhenAll(exports);
+            var keys = (includeBaseKeys ? Keys : Array.Empty<string>())
+                .Concat(tweakKeys ?? Array.Empty<string>())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // A bulk apply can touch 100+ keys; each export is its own reg.exe process.
+            using var gate = new SemaphoreSlim(8);
+            var exports = keys.Select(async (key, i) =>
+            {
+                await gate.WaitAsync();
+                try { return await CommandRunner.ExecAsync($"reg export \"{key}\" \"{Path.Combine(folder, $"key{i}.reg")}\" /y"); }
+                finally { gate.Release(); }
+            });
+            var results = await Task.WhenAll(exports);
+
+            // Some keys don't exist yet, but if none exported there is no backup.
+            if (!results.Any(r => r.Ok))
+            {
+                Directory.Delete(folder, recursive: true);
+                return "";
+            }
             return Path.GetFileName(folder);
         }
         catch
         {
             return "";
         }
+    }
+
+    /// <summary>Keeps only the newest backups with this note.</summary>
+    public static void Prune(string note, int keep)
+    {
+        try
+        {
+            foreach (var dir in Directory.GetDirectories(BackupRoot, $"backup_*_{note}")
+                         .OrderByDescending(Path.GetFileName, StringComparer.Ordinal).Skip(keep))
+                Directory.Delete(dir, recursive: true);
+        }
+        catch { /* pruning is housekeeping; never fail an apply over it */ }
     }
 
     /// <summary>Lists existing backup folders, newest first.</summary>

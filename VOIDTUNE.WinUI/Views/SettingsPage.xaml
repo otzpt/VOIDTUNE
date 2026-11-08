@@ -106,7 +106,7 @@
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="10">
                     <TextBlock Text="About this build" FontWeight="SemiBold" />
-                    <TextBlock Text="Native C# / WinUI 3 (Windows App SDK). Mica backdrop, Fluent design, runs elevated. ~140 reversible tweaks, services, startup, drivers, GPU health, latency, benchmarks, app installer and more."
+                    <TextBlock Text="Native C# / WinUI 3 (Windows App SDK). Mica backdrop, Fluent design, runs elevated. Reversible tweaks, services, startup, latency, benchmarks and more."
                                Opacity="0.75" TextWrapping="Wrap" />
                     <TextBlock x:Name="InstallModeText" Opacity="0.55" FontSize="12" FontFamily="Consolas" />
                 </StackPanel>

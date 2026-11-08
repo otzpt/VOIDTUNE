@@ -28,12 +28,17 @@ public sealed class StartupManager
         Items.Clear();
         MigrateOldStashFolders();   // clean up any legacy VOIDTUNE_Disabled folder inside Startup
 
-        // Enabled registry entries
-        ReadRunKey(Registry.CurrentUser, "HKCU", true);
-        ReadRunKey(Registry.LocalMachine, "HKLM", true);
+        // A 64-bit process only sees 32-bit apps' Run values (WOW6432Node) through the 32-bit view.
+        using (var hkcu = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default))
+            ReadRunKey(hkcu, "HKCU", true);
+        using (var hklm64 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+            ReadRunKey(hklm64, "HKLM", true);
+        using (var hklm32 = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32))
+            ReadRunKey(hklm32, "HKLM32", true);
         // Disabled registry entries (from our backup hive)
         ReadBackup("HKCU");
         ReadBackup("HKLM");
+        ReadBackup("HKLM32");
 
         // Startup folders
         ReadFolder(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "Folder (user)");
@@ -41,27 +46,48 @@ public sealed class StartupManager
         ReadDisabledFolderItems();   // disabled folder shortcuts, stashed outside Startup
     }
 
+    // "HKLM32" is an internal code for the WOW6432Node view, not a real registry path.
+    private static string RunLabel(string scope) => scope switch
+    {
+        "HKLM32" => "HKLM\\…\\Run (32-bit)",
+        _ => $"{scope}\\…\\Run",
+    };
+
     private void ReadRunKey(RegistryKey root, string scope, bool enabled)
     {
         try
         {
             using var k = root.OpenSubKey(RunPath);
             if (k == null) return;
+            using var approved = OpenApproved(scope, writable: false);
             foreach (var name in k.GetValueNames())
             {
                 if (string.IsNullOrEmpty(name)) continue;
+                string cmd = k.GetValue(name)?.ToString() ?? "";
+                bool isOn = enabled && !(approved?.GetValue(name) is byte[] { Length: > 0 } state && (state[0] & 1) == 1);
                 Items.Add(new StartupItem
                 {
                     Name = name,
-                    Command = k.GetValue(name)?.ToString() ?? "",
-                    Location = $"{scope}\\…\\Run",
+                    Command = cmd,
+                    Location = RunLabel(scope) + (isOn ? "" : " (disabled)"),
                     Scope = scope,
-                    Enabled = enabled,
-                    Committed = enabled,
+                    Enabled = isOn,
+                    Committed = isOn,
+                    Missing = !StartupTarget.Exists(cmd),
                 });
             }
         }
         catch { /* ignore */ }
+    }
+
+    // Task Manager's on/off state. Undocumented format: an odd first byte means disabled.
+    private static RegistryKey? OpenApproved(string scope, bool writable)
+    {
+        var hive = scope == "HKCU" ? RegistryHive.CurrentUser : RegistryHive.LocalMachine;
+        using var root = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+        return root.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\" + (scope == "HKLM32" ? "Run32" : "Run"),
+            writable);
     }
 
     private void ReadBackup(string scope)
@@ -73,18 +99,34 @@ public sealed class StartupManager
             foreach (var name in k.GetValueNames())
             {
                 if (string.IsNullOrEmpty(name)) continue;
+                string cmd = k.GetValue(name)?.ToString() ?? "";
                 Items.Add(new StartupItem
                 {
                     Name = name,
-                    Command = k.GetValue(name)?.ToString() ?? "",
-                    Location = $"{scope}\\…\\Run (disabled)",
+                    Command = cmd,
+                    Location = RunLabel(scope) + " (disabled)",
                     Scope = scope,
                     Enabled = false,
                     Committed = false,
+                    Missing = !StartupTarget.Exists(cmd),
                 });
             }
         }
         catch { /* ignore */ }
+    }
+
+    // Shell bookkeeping files: Directory.GetFiles does not filter by attributes.
+    private static bool IsShellJunk(string path)
+    {
+        string name = Path.GetFileName(path);
+        if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) return true;
+        try
+        {
+            var attr = File.GetAttributes(path);
+            if ((attr & FileAttributes.Hidden) != 0 && (attr & FileAttributes.System) != 0) return true;
+        }
+        catch { /* ignore */ }
+        return false;
     }
 
     private void ReadFolder(string folder, string label)
@@ -94,11 +136,13 @@ public sealed class StartupManager
             if (!Directory.Exists(folder)) return;
             foreach (var f in Directory.GetFiles(folder))
             {
+                if (IsShellJunk(f)) continue;
                 Items.Add(new StartupItem
                 {
                     Name = Path.GetFileNameWithoutExtension(f),
                     Command = f,
                     Location = label,
+                    Missing = !StartupTarget.LinkResolves(f),
                     Scope = "Folder:" + folder,
                     Enabled = true,
                     Committed = true,
@@ -146,12 +190,13 @@ public sealed class StartupManager
             string userStartup = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             foreach (var f in Directory.GetFiles(StashDir))
             {
-                if (Path.GetFileName(f).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                if (IsShellJunk(f)) continue;
                 Items.Add(new StartupItem
                 {
                     Name = Path.GetFileNameWithoutExtension(f),
                     Command = f,
                     Location = "Startup folder (disabled)",
+                    Missing = !StartupTarget.LinkResolves(f),
                     Scope = "Folder:" + userStartup,
                     Enabled = false,
                     Committed = false,
@@ -182,15 +227,27 @@ public sealed class StartupManager
         item.Location = enable ? baseLoc : baseLoc + suffix;
     }
 
+    // Must open the SAME hive+view the item was read from (see Refresh): writing a 32-bit
+    // entry's toggle through the native 64-bit view would silently create a second, unrelated
+    // value instead of touching the one that's actually there.
+    private static RegistryKey OpenRunRoot(string scope) => scope switch
+    {
+        "HKLM"   => RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64),
+        "HKLM32" => RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32),
+        _        => RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default),
+    };
+
     private void ToggleRegistry(StartupItem item, bool enable)
     {
-        RegistryKey root = item.Scope == "HKLM" ? Registry.LocalMachine : Registry.CurrentUser;
         try
         {
+            using var root = OpenRunRoot(item.Scope);
             if (enable)
             {
                 using var run = root.CreateSubKey(RunPath);
                 run?.SetValue(item.Name, item.Command);
+                using var approved = OpenApproved(item.Scope, writable: true);
+                approved?.DeleteValue(item.Name, false);
                 using var bk = Registry.CurrentUser.CreateSubKey($@"{BackupPath}\{item.Scope}");
                 bk?.DeleteValue(item.Name, false);
             }

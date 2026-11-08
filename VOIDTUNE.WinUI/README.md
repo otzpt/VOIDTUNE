@@ -8,10 +8,10 @@ Source for the WinUI 3 (C# / .NET 8, Windows App SDK) application. See the [root
 App.xaml(.cs)        App startup, theme, crash log
 MainWindow.xaml(.cs)  Shell: NavigationView + Mica backdrop
 app.manifest          requireAdministrator, PerMonitorV2 DPI
-Models/                Tweak, AppItem, PersonalizeToggle, DriverItem, StartupItem, BackupItem, ServiceItem, ProcessItem
+Models/                Tweak, PersonalizeToggle, StartupItem, BackupItem, ServiceItem, ProcessItem
 Services/              One service class per feature area — TweakCatalog, TweakEngine, HardwareInfo,
-                        SystemMonitor, ServiceManager, ProcessMonitor, PersonalizeService, AppCatalog,
-                        DriverService, GpuHealthService, LatencyService, BenchmarkService, StartupManager,
+                        SystemMonitor, ServiceManager, ProcessMonitor, PersonalizeService,
+                        LatencyService, BenchmarkService, StartupManager,
                         BackupService, CommandRunner
 Converters/            XAML value converters
 Views/                 One page per navigation item

@@ -41,9 +41,9 @@ public sealed partial class SettingsPage : Page
             var dlg = new ContentDialog
             {
                 Title = "Enable Developer mode?",
-                Content = "Developer mode unlocks the DevTools category — a live system probe, an elevated " +
-                          "console, and a block-based tweak builder.\n\nThese are work-in-progress features. " +
-                          "Everything stays reversible, but expect rough edges. Continue?",
+                Content = "Developer mode unlocks the DevTools category: a live system probe, a registry " +
+                          "diff, and a block-based tweak builder.\n\nThese are work-in-progress features. " +
+                          "Expect rough edges. Continue?",
                 PrimaryButtonText = "Enable WIP features",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
@@ -67,7 +67,18 @@ public sealed partial class SettingsPage : Page
         UpdateCard.Visibility = Visibility.Collapsed;
         Show("Checking GitHub for the latest release…", InfoBarSeverity.Informational);
 
-        var info = await UpdateService.CheckAsync();
+        UpdateInfo? info;
+        try
+        {
+            info = await UpdateService.CheckAsync();
+        }
+        catch (Exception ex)
+        {
+            CheckRing.IsActive = false;
+            CheckBtn.IsEnabled = true;
+            Show($"Couldn't check for updates: {ex.Message}", InfoBarSeverity.Warning);
+            return;
+        }
 
         CheckRing.IsActive = false;
         CheckBtn.IsEnabled = true;

@@ -154,51 +154,6 @@ public sealed partial class DevToolsPage : Page
         ProbeSummary.Text = "Report copied to clipboard.";
     }
 
-    // ── Console ───────────────────────────────────────────────────────────────────────
-    private void Preset_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        (string cmd, bool ps) = PresetBox.SelectedIndex switch
-        {
-            0 => ("Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Name, @{N='CPU(s)';E={[math]::Round($_.CPU,1)}}, @{N='RAM(MB)';E={[math]::Round($_.WS/1MB)}} | Format-Table -AutoSize", true),
-            1 => ("Get-Process | Sort-Object WS -Descending | Select-Object -First 15 Name, @{N='RAM(MB)';E={[math]::Round($_.WS/1MB)}} | Format-Table -AutoSize", true),
-            2 => ("netsh int tcp show global", false),
-            3 => ("Get-CimInstance Win32_StartupCommand | Select-Object Name, Location, Command | Format-List", true),
-            4 => ("taskkill /f /im explorer.exe & start explorer.exe", false),
-            5 => ("sfc /scannow", false),
-            _ => ("", true),
-        };
-        if (cmd.Length == 0) return;
-        CmdBox.Text = cmd;
-        ShellBox.SelectedIndex = ps ? 0 : 1;
-    }
-
-    private async void RunCmd_Click(object sender, RoutedEventArgs e)
-    {
-        string body = CmdBox.Text;
-        if (string.IsNullOrWhiteSpace(body)) { OutputText.Text = "(nothing to run)"; return; }
-
-        bool powershell = ShellBox.SelectedIndex == 0;
-        RunCmdBtn.IsEnabled = false;
-        CmdBusy.IsActive = true;
-        OutputText.Text = $"$ {body.Trim()}\n\nRunning…";
-
-        var r = await CommandRunner.RunScriptAsync(body, powershell);
-
-        CmdBusy.IsActive = false;
-        RunCmdBtn.IsEnabled = true;
-        string status = r.Ok ? "exit 0" : "non-zero exit";
-        string output = string.IsNullOrWhiteSpace(r.Output) ? "(no output)" : r.Output;
-        OutputText.Text = $"$ {body.Trim()}\n\n{output}\n\n[{status}]";
-    }
-
-    private void CopyOutput_Click(object sender, RoutedEventArgs e) => CopyToClipboard(OutputText.Text);
-
-    private void ClearConsole_Click(object sender, RoutedEventArgs e)
-    {
-        CmdBox.Text = "";
-        OutputText.Text = "Output appears here.";
-    }
-
     // ── Reg Diff ──────────────────────────────────────────────────────────────────────
     private async void SnapA_Click(object sender, RoutedEventArgs e)
     {
@@ -323,11 +278,11 @@ public sealed partial class DevToolsPage : Page
             ? (CodeApply.Text.Trim(), CodeRevert.Text.Trim())
             : ComposeFromBlocks();
 
-    private (string apply, string revert) ComposeFromBlocks()
+    private (string apply, string revert) ComposeFromBlocks(IEnumerable<TweakBlock>? source = null)
     {
         var applies = new List<string>();
         var reverts = new List<string>();
-        foreach (var b in Blocks)
+        foreach (var b in source ?? Blocks)
         {
             switch (b.Kind)
             {
@@ -448,14 +403,15 @@ public sealed partial class DevToolsPage : Page
             using var input = new MemoryStream(Convert.FromBase64String(code[4..]));
             using var gz = new GZipStream(input, CompressionMode.Decompress);
             using var output = new MemoryStream();
-            gz.CopyTo(output);
+            var chunk = new byte[8192];
+            for (int n; (n = gz.Read(chunk)) > 0;)
+            {
+                output.Write(chunk, 0, n);
+                if (output.Length > 1024 * 1024) throw new InvalidOperationException("Code is too large.");
+            }
             var share = JsonSerializer.Deserialize<LabShare>(output.ToArray()) ?? throw new InvalidOperationException("Empty code.");
 
-            LabName.Text = share.N;
-            LabCategory.Text = share.C;
-            LabTier.SelectedIndex = Math.Clamp(share.T, 0, 1);
-            LabDesc.Text = share.D;
-            Blocks.Clear();
+            var imported = new List<TweakBlock>();
             foreach (var b in share.B)
             {
                 var block = b.K switch
@@ -466,15 +422,65 @@ public sealed partial class DevToolsPage : Page
                     _ => new TweakBlock { Kind = "cmd", Title = "Run a command", AccentHex = "#22c55e", Label1 = "Apply command", Ph1 = "", Label2 = "Revert command (optional)", Ph2 = "", Has2 = true },
                 };
                 block.V1 = b.V1; block.V2 = b.V2; block.V3 = b.V3;
-                Blocks.Add(block);
+                imported.Add(block);
             }
+
+            var (apply, revert) = ComposeFromBlocks(imported);
+            if (!await ConfirmImportAsync(share.N, apply, revert))
+            {
+                PreviewText.Text = "Import cancelled, nothing changed.";
+                return;
+            }
+
+            LabName.Text = share.N;
+            LabCategory.Text = share.C;
+            LabTier.SelectedIndex = Math.Clamp(share.T, 0, 1);
+            LabDesc.Text = share.D;
+            Blocks.Clear();
+            foreach (var block in imported) Blocks.Add(block);
             UpdateBlockEmpty();
-            PreviewText.Text = $"Imported \"{share.N}\" ({share.B.Count} block(s)) — review it, then save or submit.";
+            PreviewText.Text = $"APPLY:\n{apply}\n\nREVERT:\n{(revert.Length == 0 ? "(none)" : revert)}";
         }
         catch (Exception ex)
         {
             PreviewText.Text = "Import failed: " + ex.Message;
         }
+    }
+
+    // A share code's name and description are written by whoever made it; only the commands
+    // show what it does, and they run as administrator once the tweak is applied.
+    private async System.Threading.Tasks.Task<bool> ConfirmImportAsync(string name, string apply, string revert)
+    {
+        var commands = new TextBox
+        {
+            Text = $"APPLY:\n{(apply.Length == 0 ? "(none)" : apply)}\n\nREVERT:\n{(revert.Length == 0 ? "(none)" : revert)}",
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"),
+            MaxHeight = 320,
+            MinWidth = 460,
+        };
+        ScrollViewer.SetVerticalScrollBarVisibility(commands, ScrollBarVisibility.Auto);
+
+        var body = new StackPanel { Spacing = 10 };
+        body.Children.Add(new TextBlock
+        {
+            Text = "These commands run as administrator when the tweak is applied. Only import codes from people you trust.",
+            TextWrapping = TextWrapping.Wrap,
+        });
+        body.Children.Add(commands);
+
+        var dlg = new ContentDialog
+        {
+            Title = $"Review \"{name}\"",
+            Content = body,
+            PrimaryButtonText = "Import",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.XamlRoot,
+        };
+        return await dlg.ShowAsync() == ContentDialogResult.Primary;
     }
 
     private void Submit_Click(object sender, RoutedEventArgs e)

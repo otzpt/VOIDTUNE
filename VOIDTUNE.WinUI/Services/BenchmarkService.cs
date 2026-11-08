@@ -43,6 +43,7 @@ public static class BenchmarkService
             int size = 256 * 1024 * 1024;
             var src = new byte[size];
             var dst = new byte[size];
+            Buffer.BlockCopy(src, 0, dst, 0, size);   // first touch commits the pages; don't time it
             sw.Restart();
             int passes = 6;
             for (int i = 0; i < passes; i++) Buffer.BlockCopy(src, 0, dst, 0, size);
@@ -63,8 +64,10 @@ public static class BenchmarkService
             var buf = new byte[chunk];
             new Random().NextBytes(buf);
 
+            // FileOptions.WriteThrough: each write only returns once it has actually reached
+            // the device, not once it has landed in the Windows page cache.
             sw.Restart();
-            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, chunk))
+            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, chunk, FileOptions.WriteThrough))
             {
                 for (int i = 0; i < chunks; i++) fs.Write(buf, 0, chunk);
                 fs.Flush(true);
@@ -73,11 +76,13 @@ public static class BenchmarkService
             double mb = chunk * (double)chunks / 1048576.0;
             m.Add(new("DISK WRITE", $"{Math.Round(mb / sw.Elapsed.TotalSeconds)} MB/s", "#22C55E"));
 
+            // Unbuffered: a plain read would hit the page cache for data this process just wrote.
+            var (aligned, offset) = UnbufferedIo.AllocateAligned(chunk);
             sw.Restart();
-            using (var fs = new FileStream(tmp, FileMode.Open, FileAccess.Read, FileShare.None, chunk))
+            using (var fs = UnbufferedIo.Open(tmp, sequential: true))
             {
                 int read; long total = 0;
-                while ((read = fs.Read(buf, 0, chunk)) > 0) total += read;
+                while ((read = fs.Read(aligned, offset, chunk)) > 0) total += read;
                 GC.KeepAlive(total);
             }
             sw.Stop();

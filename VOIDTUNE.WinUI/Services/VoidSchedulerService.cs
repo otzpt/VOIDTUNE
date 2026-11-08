@@ -273,9 +273,6 @@ public sealed class VoidSchedulerService
         try { p.PriorityClass = c; } catch { /* protected */ }
     }
 
-    private static nuint FullMask(Topology t) =>
-        t.LogicalCount >= 64 ? unchecked((nuint)ulong.MaxValue) : (nuint)((1UL << t.LogicalCount) - 1);
-
     private static string SafeName(Process p) { try { return p.ProcessName; } catch { return "process"; } }
 
     private static bool IsCritical(string name) =>

@@ -10,7 +10,8 @@ namespace VOIDTUNE.WinUI.Services;
 public static class HardwareInfo
 {
     public static string CpuName { get; } = ReadCpuName();
-    public static string CpuVendor { get; } = DetectCpuVendor(ReadCpuName(), ReadCpuVendorId());
+    public static string CpuVendor { get; } = DetectCpuVendor(CpuName, ReadCpuVendorId());
+    public static CpuProfile Cpu { get; } = CpuProfile.Parse(CpuName);
     public static int WinBuild { get; } = Environment.OSVersion.Version.Build;
     public static bool IsLaptop { get; } = DetectLaptop();
 

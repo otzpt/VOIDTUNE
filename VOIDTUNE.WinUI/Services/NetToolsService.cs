@@ -117,23 +117,23 @@ public static class NetToolsService
                 procNames[pid] = pname;
             }
 
-            // show active traffic first; skip the loopback chatter unless it's all there is
-            if (rows.Count < 120)
+            rows.Add(new ConnRow
             {
-                rows.Add(new ConnRow
-                {
-                    Proc = pname,
-                    Local = parts[1],
-                    Remote = parts[2],
-                    State = state,
-                    Hex = state == "ESTABLISHED" ? "#22C55E" : state == "LISTENING" ? "#38BDF8" : "#9a93a8",
-                });
-            }
+                Proc = pname,
+                Local = parts[1],
+                Remote = parts[2],
+                State = state,
+                Hex = state == "ESTABLISHED" ? "#22C55E" : state == "LISTENING" ? "#38BDF8" : "#9a93a8",
+            });
         }
 
+        // show active traffic first; skip the loopback chatter unless it's all there is
+        bool IsLoopback(ConnRow c) => c.Local.StartsWith("127.", StringComparison.Ordinal) || c.Local.StartsWith("[::1]", StringComparison.Ordinal);
         var ordered = rows
             .OrderBy(c => c.State switch { "ESTABLISHED" => 0, "LISTENING" => 1, _ => 2 })
+            .ThenBy(IsLoopback)
             .ThenBy(c => c.Proc, StringComparer.OrdinalIgnoreCase)
+            .Take(120)
             .ToList();
         return (ordered, $"{established} established · {listening} listening · {other} other");
     }

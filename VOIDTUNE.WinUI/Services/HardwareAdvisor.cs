@@ -43,6 +43,21 @@ public static class HardwareAdvisor
             }
         }
         catch { /* advisory only — never fail loudly */ }
+
+        if (HardwareInfo.Cpu.IsRaptorLakeDesktop && MicrocodeRevision() is > 0 and < 0x12F)
+            findings.Add("This 13th/14th gen CPU is on microcode older than 0x12F, which leaves it exposed to Intel's Vmin shift " +
+                         "instability. Update your motherboard BIOS.");
         return findings;
     });
+
+    // The revision is the high half of the 8-byte "Update Revision" value.
+    private static uint MicrocodeRevision()
+    {
+        try
+        {
+            using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+            return k?.GetValue("Update Revision") is byte[] { Length: >= 8 } b ? BitConverter.ToUInt32(b, 4) : 0;
+        }
+        catch { return 0; }
+    }
 }

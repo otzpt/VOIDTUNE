@@ -139,55 +139,16 @@
                 </Grid>
             </PivotItem>
 
-            <!-- ═════════ CONSOLE ═════════ -->
-            <PivotItem Header="Console">
+            <!-- ═════════ LOG ═════════ -->
+            <PivotItem Header="Log">
                 <Grid RowSpacing="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="140" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
-                        <ComboBox x:Name="ShellBox" SelectedIndex="0" MinWidth="130">
-                            <ComboBoxItem Content="PowerShell" />
-                            <ComboBoxItem Content="cmd.exe" />
-                        </ComboBox>
-                        <ComboBox x:Name="PresetBox" MinWidth="210" PlaceholderText="Presets…"
-                                  SelectionChanged="Preset_Changed">
-                            <ComboBoxItem Content="Top 15 CPU processes" />
-                            <ComboBoxItem Content="Top 15 RAM processes" />
-                            <ComboBoxItem Content="TCP global settings" />
-                            <ComboBoxItem Content="Startup commands" />
-                            <ComboBoxItem Content="Restart Explorer" />
-                            <ComboBoxItem Content="System file check (sfc)" />
-                        </ComboBox>
-                        <Button x:Name="RunCmdBtn" Click="RunCmd_Click" Style="{ThemeResource AccentButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE768;" FontSize="14" />
-                                <TextBlock Text="Run (admin)" />
-                            </StackPanel>
-                        </Button>
-                        <Button Click="CopyOutput_Click" Content="Copy output" />
-                        <Button Click="ClearConsole_Click" Content="Clear" />
-                        <ProgressRing x:Name="CmdBusy" IsActive="False" Width="20" Height="20" VerticalAlignment="Center" />
-                    </StackPanel>
-
-                    <TextBox Grid.Row="1" x:Name="CmdBox" PlaceholderText="Enter a command… (runs elevated)"
-                             FontFamily="Consolas" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="120" />
-
-                    <Border Grid.Row="2" Background="#0B0A10" CornerRadius="8" BorderThickness="1"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
-                        <ScrollViewer Padding="14">
-                            <TextBlock x:Name="OutputText" FontFamily="Consolas" FontSize="12.5" TextWrapping="Wrap"
-                                       IsTextSelectionEnabled="True" Foreground="#C8CEDA" Text="Output appears here." />
-                        </ScrollViewer>
-                    </Border>
-
-                    <TextBlock Grid.Row="3" Text="LIVE APPLY / REVERT LOG" Style="{StaticResource MonoLabel}" Margin="2,4,0,0" />
-                    <Border Grid.Row="4" Background="#0B0A10" CornerRadius="8" BorderThickness="1"
+                    <TextBlock Grid.Row="0" Text="LIVE APPLY / REVERT LOG" Style="{StaticResource MonoLabel}" Margin="2,4,0,0" />
+                    <Border Grid.Row="1" Background="#0B0A10" CornerRadius="8" BorderThickness="1"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
                         <ScrollViewer x:Name="LogScroller" Padding="14">
                             <TextBlock x:Name="LogText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"

@@ -55,7 +55,8 @@ public sealed partial class TweaksPage : Page
         {
             ApplyFilter();
         }
-        HwChip.Text = $"{HardwareInfo.CpuVendor} · {HardwareInfo.GpuVendor} · WIN {HardwareInfo.WinBuild}";
+        string cpu = HardwareInfo.Cpu.Generation.Length > 0 ? HardwareInfo.Cpu.Generation : HardwareInfo.CpuVendor;
+        HwChip.Text = $"{cpu} · {HardwareInfo.GpuVendor} · WIN {HardwareInfo.WinBuild}";
     }
 
     /// <summary>Categories not in the curated list — e.g. "Custom" from the DevTools Tweak Lab.
@@ -194,7 +195,7 @@ public sealed partial class TweaksPage : Page
 
     private async void ApplySafe_Click(object sender, RoutedEventArgs e)
     {
-        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe && !t.Applied).ToList();
+        var safe = _engine.Tweaks.Where(t => t.Tier == TweakTier.Safe && !t.Applied && !t.IsResetAction).ToList();
         await RunApply(safe, "SAFE");
     }
 

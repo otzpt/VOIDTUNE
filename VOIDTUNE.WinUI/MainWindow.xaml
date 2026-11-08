@@ -45,25 +45,8 @@
         <!-- ===== Custom title bar ===== -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Height="48" Padding="16,0,0,0">
             <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
-                <!-- diamond mark -->
-                <Grid Width="22" Height="22">
-                    <Border Width="15" Height="15" CornerRadius="3"
-                            BorderBrush="{StaticResource BrandViolet}" BorderThickness="1.6"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border.RenderTransform>
-                            <RotateTransform Angle="45" CenterX="7.5" CenterY="7.5" />
-                        </Border.RenderTransform>
-                    </Border>
-                    <Ellipse Width="5" Height="5" Fill="{StaticResource BrandPink}"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Grid>
                 <TextBlock Text="VOIDTUNE" FontSize="15" FontWeight="Bold"
                            VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
-                <Border Background="#251042" BorderBrush="{StaticResource BrandViolet}" BorderThickness="1"
-                        CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
-                    <TextBlock Text="v0.8.18 · WinUI 3" FontSize="10" FontFamily="Consolas"
-                               Foreground="{StaticResource BrandVioletSoft}" />
-                </Border>
             </StackPanel>
         </Grid>
 
@@ -107,12 +90,6 @@
                 </muxc:NavigationViewItem>
 
                 <muxc:NavigationViewItemHeader Content="SYSTEM" />
-                <muxc:NavigationViewItem Content="Drivers" Tag="drivers">
-                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE950;" /></muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem Content="GPU Health" Tag="gpu">
-                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xF211;" /></muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem Content="Latency" Tag="latency">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE945;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
@@ -121,14 +98,8 @@
                 </muxc:NavigationViewItem>
 
                 <muxc:NavigationViewItemHeader Content="TOOLS" />
-                <muxc:NavigationViewItem Content="Apps" Tag="apps">
-                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE896;" /></muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
                 <muxc:NavigationViewItem Content="Backup &amp; Restore" Tag="backup">
                     <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE777;" /></muxc:NavigationViewItem.Icon>
-                </muxc:NavigationViewItem>
-                <muxc:NavigationViewItem Content="Script Runner" Tag="script">
-                    <muxc:NavigationViewItem.Icon><FontIcon Glyph="&#xE756;" /></muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
             </muxc:NavigationView.MenuItems>
 
